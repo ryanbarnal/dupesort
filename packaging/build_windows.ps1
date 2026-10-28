@@ -17,8 +17,8 @@ if ($FetchHelpers) {
     Invoke-WebRequest "https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-windows-x86_64.zip" -OutFile "$tmp\fpcalc.zip"
     Expand-Archive "$tmp\fpcalc.zip" "$tmp\fpcalc"
     Copy-Item (Get-ChildItem "$tmp\fpcalc" -Recurse -Filter fpcalc.exe).FullName bin\
-    # FFmpeg (BtbN builds, linked from ffmpeg.org); LGPL shared build is smallest
-    Invoke-WebRequest "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip" -OutFile "$tmp\ffmpeg.zip"
+    # FFmpeg (BtbN builds, linked from ffmpeg.org); the GPL build includes x264 for H.264
+    Invoke-WebRequest "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip" -OutFile "$tmp\ffmpeg.zip"
     Expand-Archive "$tmp\ffmpeg.zip" "$tmp\ffmpeg"
     $ffbin = (Get-ChildItem "$tmp\ffmpeg" -Recurse -Filter ffmpeg.exe).Directory.FullName
     Copy-Item "$ffbin\ffmpeg.exe", "$ffbin\ffprobe.exe", "$ffbin\*.dll" bin\

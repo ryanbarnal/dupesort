@@ -15,8 +15,8 @@ helpers = [(str(p), "bin") for p in Path("bin").glob("*") if p.is_file()] if Pat
 a = Analysis(
     ["run_dupesort.py"],
     binaries=helpers,
-    datas=[("packaging/icon.png", "dupesort")],
-    hiddenimports=["pillow_heif"],
+    datas=[("dupesort/gui/logo.png", "dupesort/gui"), ("dupesort/gui/guide.html", "dupesort/gui")],
+    hiddenimports=["pillow_heif", "pypdfium2"],
     excludes=["tkinter", "PySide6.QtWebEngineCore", "PySide6.Qt3DCore", "PySide6.QtQuick",
               "PySide6.QtQml", "PySide6.QtMultimedia", "PySide6.QtCharts"],
 )

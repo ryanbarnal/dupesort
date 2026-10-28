@@ -30,6 +30,10 @@ class Settings:
     date_folder_pattern: str = "{year}/{month:02d}"
     # Documents
     document_similarity: int = 90  # percent of shared text
+    # Appearance
+    theme_mode: str = "System"  # System / Light / Dark
+    accent: str = "Sky"
+    play_intro: bool = True
     # General
     keep_strategy: str = "best"
     min_size_kb: int = 1

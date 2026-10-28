@@ -1,6 +1,10 @@
 # DupeSort
 
-A desktop app for Windows, macOS and Linux. It finds duplicate **music, photos, videos and documents**, moves the extra copies into a `_Duplicates` folder, and tidies up what's left. Nothing is ever deleted, and every change can be undone from the **History** page.
+<img src="packaging/icon.png" width="96" align="right" alt="DupeSort logo">
+
+A desktop app for Windows, macOS and Linux, created by **Ryan Ocbina Barnal**. It finds duplicate **music, photos, videos and documents**, moves the extra copies into a `_Duplicates` folder, tidies up what's left, and converts files between formats. Nothing is ever deleted, and every change can be undone from the **History** page.
+
+The full user guide is in the app (**Help → DupeSort User Guide**) and at [`dupesort/gui/guide.html`](dupesort/gui/guide.html).
 
 ## What it does
 
@@ -16,6 +20,24 @@ A desktop app for Windows, macOS and Linux. It finds duplicate **music, photos, 
 - **Move duplicates** relocates the unticked copies to `<scanned folder>/_Duplicates/<original sub-folder>/`.
 - **Music lookups:** matches at or above the confidence threshold (default 90%) are ticked automatically. Orange rows need review: pick another online match from the dropdown, or type the details yourself.
 - **History:** every move, rename and tag change is logged and can be undone.
+
+## Converters
+
+Each section has a convert tab. Originals are never changed; new files are saved next to them or in a folder you choose.
+
+| | Converts |
+|---|---|
+| **Music → Convert** | MP3, AAC/M4A, Opus, Ogg Vorbis, FLAC, ALAC or WAV, at 64–320 kbps. Never raises the bitrate above the source (optional). Tags, lyrics and cover art are copied over. |
+| **Photos → Convert & resize** | JPEG, PNG or WebP (HEIC input supported). Quality slider, fit-within-pixels, percent scaling, PNG colour reduction, and removing camera/GPS data. Upscale 2×/4× with simple Lanczos + sharpening, or with **AI** (Real-ESRGAN, downloaded once on first use, ~50 MB). |
+| **Videos → Convert & resize** | MP4, MOV, MKV, WebM or AVI. H.264, H.265, VP9 or AV1. Resolution 360p–4K. Aspect ratios 16:9, 9:16, 1:1, 4:5, 4:3 and 21:9, with fit (bars), fill (crop) or stretch. Quality presets from "High" to "Small file". |
+| **Documents → PDF tools** | Images → PDF, PDF → images, Word/Excel/PowerPoint → PDF (needs LibreOffice, or Microsoft Office on Windows), PDF → text, merge PDFs, compress PDFs. |
+
+## Look and feel
+
+- **Light, dark or match-system** mode, plus eight accent colours: View → Appearance, or Settings.
+- **Animated intro** at start-up, which you can skip with a click or turn off in View or Settings. `python packaging/render_intro.py` exports it as a 1080p video (`--vertical` gives 1080×1920 for Reels/TikTok).
+- **Logo:** "Twin Circles". The other five designs live in `packaging/logos.py`.
+- **Help & Support** page: user guide, email support (version and OS are pre-filled), credits, and an optional **Donate** button. Set `DONATE_URL` in `dupesort/__init__.py` to show it.
 
 ## Run from source
 

@@ -20,20 +20,23 @@ def main() -> int:
     from . import APP_NAME
     from .gui.main_window import MainWindow
 
+    from PySide6.QtGui import QIcon
+
+    from .gui.support_page import LOGO
+
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_NAME)
-    from pathlib import Path
-
-    from PySide6.QtGui import QIcon
-
-    here = Path(__file__).resolve().parent
-    for icon in (here / "icon.png", here.parent / "packaging" / "icon.png"):
-        if icon.is_file():  # bundled copy in builds, packaging/ when run from source
-            app.setWindowIcon(QIcon(str(icon)))
-            break
+    app.setWindowIcon(QIcon(str(LOGO)))
     window = MainWindow()
-    window.show()
+    if window.settings.play_intro and "--no-intro" not in sys.argv:
+        from .gui.intro import IntroWindow
+
+        intro = IntroWindow()
+        intro.finished.connect(window.show)
+        intro.start()
+    else:
+        window.show()
     return app.exec()
 
 

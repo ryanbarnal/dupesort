@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DupeSort User Guide</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         font-size: 14px; line-height: 1.5; max-width: 820px; margin: 0 auto; padding: 8px 18px; }
+  h1 { font-size: 26px; margin-bottom: 2px; }
+  h2 { font-size: 19px; margin-top: 26px; border-bottom: 1px solid #888888; padding-bottom: 3px; }
+  h3 { font-size: 15px; margin-top: 16px; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #888888; padding: 4px 8px; vertical-align: top; text-align: left; }
+  .tip { padding: 6px 10px; border-left: 4px solid #0ea5e9; background: transparent; }
+  code, kbd { font-family: Menlo, Consolas, monospace; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1>DupeSort User Guide</h1>
+<p>DupeSort finds duplicate <b>music, photos, videos and documents</b>, moves the extra copies
+out of the way, organizes what's left, and converts files between formats.
+<b>Nothing is ever deleted</b>, and every change can be undone.</p>
+
+<h3>Contents</h3>
+<ol>
+  <li><a href="#start">Getting started</a></li>
+  <li><a href="#dupes">Finding and moving duplicates</a></li>
+  <li><a href="#music">Music: tags, lyrics, renaming</a></li>
+  <li><a href="#photos">Photos and videos: organizing by date</a></li>
+  <li><a href="#movies">Movie and TV names</a></li>
+  <li><a href="#documents">Documents: sorting by type</a></li>
+  <li><a href="#convert">Converting files</a></li>
+  <li><a href="#history">History and undo</a></li>
+  <li><a href="#appearance">Appearance: themes, light and dark mode</a></li>
+  <li><a href="#settings">Settings and free API keys</a></li>
+  <li><a href="#faq">Questions and troubleshooting</a></li>
+  <li><a href="#support">Getting support</a></li>
+</ol>
+
+<h2 id="start">1. Getting started</h2>
+<p>The sidebar on the left has one section for each kind of file: <b>Music</b>, <b>Photos</b>,
+<b>Videos</b> and <b>Documents</b>. It also has <b>History</b> and <b>Help &amp; Support</b>.
+Each section works the same way:</p>
+<ol>
+  <li>Click <b>Add folder…</b> and choose the folders to check (for example your Music
+      folder and an old backup drive). DupeSort remembers them.</li>
+  <li>Press <b>Scan</b>. Large libraries can take a few minutes. The bar at the bottom
+      shows progress, and <b>Cancel</b> stops the scan.</li>
+  <li>Review the results and choose what to do. The tabs along the top of each section hold
+      the tools.</li>
+</ol>
+
+<h2 id="dupes">2. Finding and moving duplicates</h2>
+<p>Results appear in <b>groups</b>. Each group is a set of files that are the same, and the
+<b>reason</b> column says how they matched:</p>
+<table>
+  <tr><th>Reason</th><th>Meaning</th></tr>
+  <tr><td>Identical file</td><td>Byte-for-byte the same file.</td></tr>
+  <tr><td>Same artist &amp; title</td><td>Songs with the same artist and title, and a length within 3 seconds.</td></tr>
+  <tr><td>Same sound</td><td>The same recording identified by its audio fingerprint, even in a different format or bitrate (e.g. an MP3 and a FLAC).</td></tr>
+  <tr><td>Similar image</td><td>The same photo resized, re-saved or slightly edited.</td></tr>
+  <tr><td>Same video</td><td>The same video re-encoded at another size or quality.</td></tr>
+  <tr><td>Same text</td><td>Documents with the same text, e.g. a Word file and its PDF.</td></tr>
+</table>
+<p><b>Ticked files are kept.</b> DupeSort ticks the best copy in each group: the highest
+quality (lossless audio, higher bitrate, larger resolution), preferring originals over files
+named "copy" or "(1)". To change this, use <b>Keep which copy</b> (best quality, oldest,
+newest or shortest path), or tick and untick files yourself. Every group always keeps at
+least one file.</p>
+<p>Click a file to see details on the right (photos show a preview). <b>Open</b> plays or
+views it, and <b>Show in folder</b> reveals it.</p>
+<p>Press <b>Move duplicates to _Duplicates</b>. Unticked files move into a
+<code>_Duplicates</code> folder inside the scanned folder, keeping their sub-folders. Look
+through that folder, then delete it yourself when you're sure.</p>
+<p class="tip">Tip: <b>Similarity tolerance</b> (photos, videos) and <b>Same text if at
+least</b> (documents) control how strict matching is. Lower values mean only very close
+matches.</p>
+
+<h2 id="music">3. Music: tags, lyrics, renaming</h2>
+<p>Open the <b>Tags, lyrics &amp; rename</b> tab after scanning.</p>
+<ol>
+  <li>Choose <b>Songs with missing details</b> or <b>All scanned songs</b>, then press
+      <b>Look up tags &amp; lyrics online</b>. DupeSort searches MusicBrainz for the title,
+      artist, original album, year, track number, genre and cover art, and LRCLIB for
+      lyrics.</li>
+  <li><b>Green</b> rows ("Confident") are ticked automatically. <b>Orange</b> rows ("Please
+      review") were uncertain: click one, pick another match from <b>Online matches</b> or
+      type the details yourself, then press <b>Use these details</b>.</li>
+  <li>Press <b>Apply ticked</b>. Tags, cover art and lyrics are written into the files. If
+      <b>Rename files</b> is ticked, files are renamed to <code>Artist - Title</code>.</li>
+</ol>
+<p><b>Rename all scanned songs (no lookup)</b> renames using the tags the files already
+have. You can change the name pattern in <b>Settings</b>, for example
+<code>{tracknumber} - {title}</code>.</p>
+<p class="tip">MusicBrainz allows one request per second, so a first lookup of 1,000 songs
+takes about 30-45 minutes. Each artist's albums are remembered, so later songs by the same
+artist are quicker.</p>
+
+<h2 id="photos">4. Photos and videos: organizing by date</h2>
+<p>The <b>Organize by date</b> tab moves files into folders such as <code>2024/07</code>. The
+date comes from, in order: the camera's own data (EXIF), a date in the file name
+(<code>IMG_20240715_…</code>, <code>VID-20240715-WA0003</code>), then the file's modified
+date. Press <b>Preview changes</b> to see every move, untick any you don't want, then press
+<b>Move into date folders</b>. You can change the folder pattern, e.g.
+<code>{year}/{year}-{month:02d}</code>.</p>
+
+<h2 id="movies">5. Movie and TV names</h2>
+<p>In <b>Videos → Movies &amp; TV names</b>, DupeSort reads names like
+<code>Blade.Runner.1982.1080p.BluRay.mkv</code> or <code>The.Office.S02E05.mkv</code> and
+renames them to <code>Blade Runner (1982).mkv</code> or <code>The Office - S02E05 - Episode
+name.mkv</code> using TMDb. This needs a free TMDb API key (see <a href="#settings">Settings
+and free API keys</a>).</p>
+
+<h2 id="documents">6. Documents: sorting by type</h2>
+<p><b>Documents → Sort by type</b> moves files into PDF, Word, Spreadsheets, Presentations,
+Text and eBooks folders.</p>
+
+<h2 id="convert">7. Converting files</h2>
+<p>Every section has a converter tab. Add files with the buttons, by dragging them in, or
+with <b>Add scanned files</b>. Choose whether to save the new files <b>next to the
+originals</b> or <b>in a folder</b>. <b>Originals are never changed.</b> If a name is already
+taken, the new file gets a number.</p>
+
+<h3>Music → Convert</h3>
+<table>
+  <tr><th>Format</th><th>Best for</th></tr>
+  <tr><td>MP3</td><td>Plays everywhere.</td></tr>
+  <tr><td>AAC (M4A)</td><td>Apple devices; better quality than MP3 at the same size.</td></tr>
+  <tr><td>Opus</td><td>Smallest files at good quality (Android, web).</td></tr>
+  <tr><td>Ogg Vorbis</td><td>Open format, games, Linux.</td></tr>
+  <tr><td>FLAC / ALAC</td><td>Lossless: perfect quality, bigger files, ideal for archiving.</td></tr>
+  <tr><td>WAV</td><td>Uncompressed, for editing software.</td></tr>
+</table>
+<p><b>Bitrate</b>: 128 kbps is fine for speech, 192-256 kbps for music, and 320 kbps is the
+highest MP3 quality. With <b>Never raise the bitrate above the original</b> on, a 128 kbps
+song is never re-encoded at 320 kbps, which would only make it bigger without sounding
+better. Tags, lyrics and cover art are copied to the new file.</p>
+
+<h3>Photos → Convert &amp; resize</h3>
+<ul>
+  <li><b>Save as</b> JPEG (photos, small), PNG (graphics, screenshots, transparency) or WebP
+      (modern, smallest). iPhone HEIC photos can be converted too.</li>
+  <li><b>Smaller files</b>: lower the <b>Quality</b> (75-85 looks the same for most photos),
+      use <b>Fit within</b> pixels (2048 px is plenty for sharing), or tick <b>Reduce PNG
+      colours</b>.</li>
+  <li><b>Higher resolution</b>: <b>Upscale 2×/4× (simple)</b> enlarges smoothly and
+      instantly. <b>Upscale 2×/4× (AI)</b> uses Real-ESRGAN to add real detail. It's slower,
+      and is downloaded once (about 50 MB) the first time you use it.</li>
+  <li><b>Remove camera &amp; GPS location data</b> before sharing photos publicly.</li>
+</ul>
+
+<h3>Videos → Convert &amp; resize</h3>
+<ul>
+  <li><b>Format</b>: MP4 plays everywhere. MOV is for Apple, MKV for archives, WebM for
+      websites, and AVI for old players.</li>
+  <li><b>Video codec</b>: H.264 (most compatible), H.265 (about half the size, newer devices),
+      VP9 or AV1 (smallest, slow to convert).</li>
+  <li><b>Resolution</b>: e.g. 1080p or 720p, measured on the shorter side, so vertical
+      videos work too.</li>
+  <li><b>Aspect ratio</b>: 16:9 (YouTube/TV), 9:16 (Reels, TikTok, Shorts), 1:1 (square),
+      4:5 (portrait posts), 4:3, or 21:9. <b>Fit</b> adds black bars, <b>Fill</b> crops the
+      edges, and <b>Stretch</b> distorts.</li>
+  <li><b>Quality / size</b>: <i>Small file</i> is great for messaging, <i>High quality</i>
+      for keeping.</li>
+</ul>
+
+<h3>Documents → PDF tools</h3>
+<table>
+  <tr><th>Task</th><th>What it does</th></tr>
+  <tr><td>Images → PDF</td><td>Combines photos or scans into one PDF (page size: fit to image, A4 or Letter).</td></tr>
+  <tr><td>PDF → images</td><td>Saves every page as PNG or JPEG.</td></tr>
+  <tr><td>Word / Excel / PowerPoint → PDF</td><td>Needs the free <a href="https://www.libreoffice.org">LibreOffice</a>. On Windows, Microsoft Office works too.</td></tr>
+  <tr><td>PDF → text</td><td>Extracts the text into a .txt file.</td></tr>
+  <tr><td>Merge PDFs into one</td><td>Joins PDFs in the order listed.</td></tr>
+  <tr><td>Compress PDFs</td><td>Shrinks the pictures inside a PDF. Lower <b>Picture quality</b> gives smaller files.</td></tr>
+</table>
+
+<h2 id="history">8. History and undo</h2>
+<p>Every move, rename and tag change is recorded on the <b>History</b> page. Select one or
+more entries and press <b>Undo selected</b>. Files go back where they were and earlier tags
+are restored. Converting only creates new files, so it doesn't appear in History. To undo a
+conversion, delete the new files.</p>
+
+<h2 id="appearance">9. Appearance: themes, light and dark mode</h2>
+<p>Use <b>View → Appearance</b> or <b>Settings</b>. Choose <b>Light</b>, <b>Dark</b>, or
+<b>System</b> (follows your computer's setting), and an accent colour such as Sky, Pink,
+Indigo, Teal, Green, Orange, Purple or Slate. Changes apply immediately. You can also turn
+the animated intro on or off.</p>
+
+<h2 id="settings">10. Settings and free API keys</h2>
+<ul>
+  <li><b>TMDb API key</b> (movie/TV names): create a free account at themoviedb.org, then go
+      to Settings → API.</li>
+  <li><b>AcoustID API key</b> (identify songs with no tags by their sound): register an
+      application at acoustid.org.</li>
+  <li>Music lookups, cover art and lyrics need no key.</li>
+  <li><b>Ignore files smaller than</b> and <b>Skip paths containing</b> keep scans
+      focused.</li>
+</ul>
+
+<h2 id="faq">11. Questions and troubleshooting</h2>
+<h3>macOS says DupeSort "can't be opened" or is from an unidentified developer</h3>
+<p>Right-click DupeSort in Applications and choose <b>Open</b>, then <b>Open</b> again.
+On recent macOS versions, use <b>System Settings → Privacy &amp; Security → Open Anyway</b>.
+You only need to do this once.</p>
+<h3>Windows SmartScreen warns about the installer</h3>
+<p>Click <b>More info → Run anyway</b>.</p>
+<h3>"Same sound" or video matching is unavailable</h3>
+<p>The installers include the helper tools (fpcalc and FFmpeg). If you run DupeSort from
+source, install them: macOS <code>brew install chromaprint ffmpeg</code>, Linux
+<code>sudo apt install libchromaprint-tools ffmpeg</code>.</p>
+<h3>A song got the wrong details</h3>
+<p>Open <b>History</b> and undo it, or look it up again and pick another match from the
+orange row. Songs with a title but no artist are never applied automatically, because a
+title alone matches many cover versions.</p>
+<h3>Where are my settings and history stored?</h3>
+<p>In your user app-data folder. <b>History → Open history folder</b> shows it. Settings are
+kept when you uninstall or upgrade.</p>
+
+<h2 id="support">12. Getting support</h2>
+<p>Open <b>Help &amp; Support</b> in the sidebar and press <b>Contact support by email</b>.
+A message to the developer opens with your DupeSort version and system already filled in.
+Please describe what you did, what you expected, and what happened.</p>
+<p>DupeSort was designed and created by <b>Ryan Ocbina Barnal</b>.</p>
+
+</body>
+</html>

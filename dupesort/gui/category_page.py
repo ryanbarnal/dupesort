@@ -110,8 +110,7 @@ class CategoryPage(QWidget):
         notice = self.notice()
         if notice:
             n = QLabel(notice, wordWrap=True, openExternalLinks=True)
-            n.setStyleSheet("QLabel { background: palette(alternate-base); padding: 6px;"
-                            " border-radius: 4px; }")
+            n.setObjectName("notice")
             lay.addWidget(n)
         lay.addLayout(top)
         lay.addWidget(self.scan_btn)
@@ -292,8 +291,11 @@ class MusicPage(CategoryPage):
     def add_tabs(self, tabs: QTabWidget) -> None:
         from .music_tab import TagTab
 
+        from .convert_tab import AudioConvertTab
+
         self.tag_tab = TagTab(self)
         tabs.addTab(self.tag_tab, "Tags, lyrics && rename")
+        tabs.addTab(AudioConvertTab(self), "Convert")
 
 
 class PhotoPage(CategoryPage):
@@ -309,9 +311,11 @@ class PhotoPage(CategoryPage):
         self.settings.photo_threshold = self.threshold.value()
 
     def add_tabs(self, tabs: QTabWidget) -> None:
+        from .convert_tab import ImageConvertTab
         from .organize_tab import DateTab
 
         tabs.addTab(DateTab(self), "Organize by date")
+        tabs.addTab(ImageConvertTab(self), "Convert && resize")
 
 
 class VideoPage(CategoryPage):
@@ -337,6 +341,9 @@ class VideoPage(CategoryPage):
 
         tabs.addTab(DateTab(self), "Organize by date")
         tabs.addTab(MovieTab(self), "Movies && TV names")
+        from .convert_tab import VideoConvertTab
+
+        tabs.addTab(VideoConvertTab(self), "Convert && resize")
 
 
 class DocumentPage(CategoryPage):
@@ -355,4 +362,7 @@ class DocumentPage(CategoryPage):
     def add_tabs(self, tabs: QTabWidget) -> None:
         from .organize_tab import TypeTab
 
+        from .convert_tab import PdfTab
+
         tabs.addTab(TypeTab(self), "Sort by type")
+        tabs.addTab(PdfTab(self), "PDF tools")

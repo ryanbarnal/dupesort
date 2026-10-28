@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QFormLayout, QGroupBox, QLabel, QLineEdit,
+    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QGroupBox, QLabel, QLineEdit,
     QSpinBox, QVBoxLayout,
 )
 
 from ..music.tags import format_name
+from . import theme
 from ..settings import Settings
 
 
@@ -70,11 +71,26 @@ class SettingsDialog(QDialog):
         scan_box = QGroupBox("Scanning")
         scan_box.setLayout(scan)
 
+        look = QFormLayout()
+        self.mode = QComboBox()
+        self.mode.addItems(theme.MODES)
+        self.mode.setCurrentText(s.theme_mode)
+        self.accent = QComboBox()
+        self.accent.addItems(list(theme.ACCENTS))
+        self.accent.setCurrentText(s.accent)
+        self.intro = QCheckBox("Play the animated intro at start-up")
+        self.intro.setChecked(s.play_intro)
+        look.addRow("Light / dark:", self.mode)
+        look.addRow("Accent colour:", self.accent)
+        look.addRow("", self.intro)
+        look_box = QGroupBox("Appearance")
+        look_box.setLayout(look)
+
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         lay = QVBoxLayout(self)
-        for w in (online_box, naming_box, scan_box):
+        for w in (look_box, online_box, naming_box, scan_box):
             lay.addWidget(w)
         lay.addWidget(buttons)
 
@@ -96,5 +112,8 @@ class SettingsDialog(QDialog):
             s.music_rename_pattern = self.pattern.text().strip()
         s.min_size_kb = self.min_size.value()
         s.exclude = [e.strip() for e in self.exclude.text().split(",") if e.strip()]
+        s.theme_mode = self.mode.currentText()
+        s.accent = self.accent.currentText()
+        s.play_intro = self.intro.isChecked()
         s.save()
         super().accept()

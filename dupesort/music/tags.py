@@ -79,6 +79,28 @@ def read_tags(path: Path) -> dict:
     return {k: v for k, v in out.items() if v and v.strip()}
 
 
+def read_cover(path: Path) -> Optional[bytes]:
+    """The embedded front-cover image (JPEG/PNG bytes), if any."""
+    audio = _open(path)
+    kind, tags = _kind(audio), audio.tags
+    if isinstance(audio, FLAC) and audio.pictures:
+        return audio.pictures[0].data
+    if tags is None:
+        return None
+    if kind == "id3":
+        pics = tags.getall("APIC")
+        return pics[0].data if pics else None
+    if kind == "mp4":
+        covers = tags.get("covr")
+        return bytes(covers[0]) if covers else None
+    if kind == "vorbis" and "metadata_block_picture" in tags:
+        try:
+            return Picture(base64.b64decode(tags["metadata_block_picture"][0])).data
+        except Exception:
+            return None
+    return None
+
+
 def audio_info(path: Path) -> dict:
     """Duration (s), bitrate (bps), sample rate and lossless flag for ranking copies."""
     try:
