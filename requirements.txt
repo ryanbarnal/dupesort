@@ -1,0 +1,8 @@
+PySide6>=6.6
+mutagen>=1.47
+Pillow>=10.0
+ImageHash>=4.3
+pillow-heif>=0.16
+pypdf>=4.0
+requests>=2.31
+platformdirs>=4.0

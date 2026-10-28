@@ -1,0 +1,86 @@
+# Builds the DupeSort installers: a .dmg for macOS (Apple Silicon), a Setup.exe
+# for Windows, and a .tar.gz for Linux. Runs on every v* tag (and attaches the
+# installers to a GitHub release) or manually from the Actions tab.
+name: build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller pytest
+      - name: Linux Qt runtime libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon-x11-0 libxcb-cursor0
+      - name: Test
+        run: python -m pytest -q tests
+
+      - name: Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue) -and
+              -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+          ./packaging/build_windows.ps1 -FetchHelpers
+
+      - name: macOS disk image
+        if: runner.os == 'macOS'
+        env:
+          PYTHON: python
+          # Optional repository secrets for a signed, notarized build:
+          DEVELOPER_ID: ${{ secrets.MACOS_DEVELOPER_ID }}
+        run: |
+          mkdir -p bin && cd bin
+          curl -sSL -o fpcalc.tar.gz https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-macos-universal.tar.gz
+          tar -xzf fpcalc.tar.gz --strip-components=1 && rm fpcalc.tar.gz
+          curl -sSL -o ffmpeg.zip https://www.osxexperts.net/ffmpeg9arm.zip && unzip -qo ffmpeg.zip ffmpeg
+          curl -sSL -o ffprobe.zip https://www.osxexperts.net/ffprobe9arm.zip && unzip -qo ffprobe.zip ffprobe
+          rm -f *.zip && chmod +x * && ./fpcalc -version && ./ffprobe -version | head -1
+          cd .. && packaging/build_macos.sh
+
+      - name: Linux archive
+        if: runner.os == 'Linux'
+        run: |
+          python packaging/make_icons.py
+          pyinstaller --noconfirm dupesort.spec
+          tar -czf dist/DupeSort-linux-x86_64.tar.gz -C dist DupeSort
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DupeSort-${{ runner.os }}
+          path: |
+            dist/*.dmg
+            dist/*Setup.exe
+            dist/*.tar.gz
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: installers/*
