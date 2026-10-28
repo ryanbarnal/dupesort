@@ -11,7 +11,7 @@ import requests
 
 from . import APP_NAME, __version__
 
-USER_AGENT = f"{APP_NAME}/{__version__} ( https://github.com/dupesort/dupesort )"
+USER_AGENT = f"{APP_NAME}/{__version__} ( https://github.com/ryanbarnal/dupesort )"
 
 # Minimum seconds between requests per host (MusicBrainz asks for 1/s).
 _INTERVALS = {"musicbrainz.org": 1.1, "api.acoustid.org": 0.34}
