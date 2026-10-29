@@ -15,6 +15,7 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-22.04]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -71,7 +72,9 @@ jobs:
             dist/*.tar.gz
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Publish whatever installers were built, even if one platform's job failed
+    # or never got a runner; a re-run later adds the missing file.
+    if: ${{ always() && startsWith(github.ref, 'refs/tags/v') }}
     needs: build
     runs-on: ubuntu-latest
     permissions:
