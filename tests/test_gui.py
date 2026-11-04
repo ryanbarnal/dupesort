@@ -57,3 +57,27 @@ def test_support_mail_has_version(app):
 
     url = support_mail_url().toString()
     assert url.startswith(f"mailto:{SUPPORT_EMAIL}") and __version__ in url
+
+
+def test_tags_table_status_column_fits_window(app):
+    from pathlib import Path
+
+    from dupesort.gui.main_window import MainWindow
+    from dupesort.music.lookup import Match, Proposal
+
+    w = MainWindow()
+    w.show()
+    page = w.pages[0][2]
+    page.tabs.setCurrentWidget(page.tag_tab)
+    tab = page.tag_tab
+    tab._add_proposal(Proposal(Path("a very long file name for this song.mp3"), {"title": "x"}, 1, [
+        Match(70, {"artist": "An Artist With A Long Name", "title": "A Long Song Title",
+                   "album": "A Long Album Name", "genre": "Alternative Rock"})]))
+    tab._add_proposal(Proposal(Path("b.mp3"), {}, 1, [], error="No match found online"))
+    app.processEvents()
+    h = tab.table.horizontalHeader()
+    last = tab.table.columnCount() - 1
+    assert h.sectionViewportPosition(last) + h.sectionSize(last) <= tab.table.viewport().width()
+    assert not tab.table.horizontalScrollBar().isVisible()
+    w.grab()
+    w.close()

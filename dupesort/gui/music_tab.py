@@ -54,10 +54,11 @@ class TagTab(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
         h = self.table.horizontalHeader()
-        h.setSectionResizeMode(QHeaderView.Interactive)
-        for col, width in zip(range(len(COLUMNS)), (50, 200, 200, 260, 90, 55, 55, 90)):
-            h.resizeSection(col, width)
-        h.setStretchLastSection(True)
+        # Short columns hug their text and the name columns share the rest, so
+        # the Status column is always on screen. Cut-off names show as tooltips.
+        h.setSectionResizeMode(QHeaderView.ResizeToContents)
+        for col in (COLUMNS.index("File"), COLUMNS.index("Current"), COLUMNS.index("Suggested")):
+            h.setSectionResizeMode(col, QHeaderView.Stretch)
         self.table.itemChanged.connect(self._on_item_changed)
         self.table.currentCellChanged.connect(lambda r, *_: self._show_details(r))
 
