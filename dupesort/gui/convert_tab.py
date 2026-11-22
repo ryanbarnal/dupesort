@@ -18,6 +18,7 @@ from ..convert import audio, images, pdf, upscale, video
 from ..convert.ffmpeg import ConversionError
 from ..core.scanner import CATEGORY_EXTENSIONS
 from ..tools import find_tool
+from . import icons
 from .widgets import human_size
 
 
@@ -68,6 +69,10 @@ class ConvertTab(QWidget):
         add_files, add_folder = QPushButton("Add files…"), QPushButton("Add folder…")
         use_scan, remove, clear = (QPushButton("Add scanned files"), QPushButton("Remove"),
                                    QPushButton("Clear"))
+        for b, kind in ((add_files, "file-plus"), (add_folder, "folder-plus"), (use_scan, "scan"),
+                        (remove, "minus"), (clear, "trash")):
+            icons.attach(b, kind)
+            b.setStyleSheet("text-align: left")
         add_files.clicked.connect(self._add_files)
         add_folder.clicked.connect(self._add_folder)
         use_scan.clicked.connect(lambda: self.files.add(f.path for f in self.page.files))
@@ -96,7 +101,8 @@ class ConvertTab(QWidget):
         group.addButton(self.to_folder)
         self.folder = QLineEdit()
         self.folder.setPlaceholderText("Choose a folder…")
-        browse = QPushButton("…")
+        browse = icons.attach(QPushButton(), "folder")
+        browse.setToolTip("Choose a folder")
         browse.clicked.connect(self._pick_folder)
         out_row = QHBoxLayout()
         out_row.addWidget(self.beside)
@@ -110,9 +116,11 @@ class ConvertTab(QWidget):
         self.summary.setWordWrap(True)
         self.open_btn = QPushButton("Show results")
         self.open_btn.setEnabled(False)
+        icons.attach(self.open_btn, "open")
         self.open_btn.clicked.connect(self._show_results)
         self.go = QPushButton(self.button_text)
         self.go.setDefault(True)
+        icons.attach(self.go, "convert")
         self.go.clicked.connect(self.start)
         page._busy_widgets.append(self.go)
         bottom = QHBoxLayout()

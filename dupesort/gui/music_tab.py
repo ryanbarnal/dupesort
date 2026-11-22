@@ -14,6 +14,7 @@ from ..core.history import Session
 from ..music import organizer
 from ..music.lookup import Match, Proposal
 from ..music.tags import format_name
+from . import icons
 
 EDIT_FIELDS = ("title", "artist", "album", "albumartist", "genre", "date", "tracknumber")
 COLUMNS = ["Apply", "File", "Current", "Suggested", "Genre", "Lyrics", "Match", "Status"]
@@ -36,6 +37,7 @@ class TagTab(QWidget):
         self.scope = QComboBox()
         self.scope.addItems(["Songs with missing details", "All scanned songs"])
         self.lookup_btn = QPushButton("Look up tags && lyrics online")
+        icons.attach(self.lookup_btn, "globe")
         self.lookup_btn.clicked.connect(self.start_lookup)
         self.rename_after = QCheckBox()
         self.rename_after.setChecked(True)
@@ -69,6 +71,7 @@ class TagTab(QWidget):
         self.lyrics = QPlainTextEdit()
         self.lyrics.setPlaceholderText("Lyrics (fetched from LRCLIB, or paste your own)")
         save = QPushButton("Use these details")
+        icons.attach(save, "check")
         save.clicked.connect(self._save_edits)
         form = QFormLayout()
         form.addRow("Online matches:", self.candidates)
@@ -93,8 +96,10 @@ class TagTab(QWidget):
 
         self.summary = QLabel("Scan a folder first, then look up songs online.")
         self.apply_btn = QPushButton("Apply ticked")
+        icons.attach(self.apply_btn, "check")
         self.apply_btn.clicked.connect(self.apply)
         self.rename_btn = QPushButton("Rename all scanned songs (no lookup)")
+        icons.attach(self.rename_btn, "pencil")
         self.rename_btn.setToolTip("Rename using each file's existing tags.")
         self.rename_btn.clicked.connect(self.rename_all)
         bottom = QHBoxLayout()

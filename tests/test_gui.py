@@ -21,13 +21,14 @@ def test_intro_frames_render(app):
         p = QPainter(img)
         paint_intro(p, 320, 200, t)
         p.end()
-    # Mid-animation the circles are visible: centre-left pixel is sky blue-ish.
+    # Mid-animation the thin white rings are drawn on the near-black background.
     img = QImage(320, 200, QImage.Format_ARGB32)
     p = QPainter(img)
     paint_intro(p, 320, 200, 0.5)
     p.end()
-    c = img.pixelColor(110, 100)
-    assert c.blue() > 150 and c.red() < 150
+    assert img.pixelColor(5, 5).lightness() < 20
+    row = [img.pixelColor(x, 100).lightness() for x in range(320)]
+    assert max(row[:160]) > 200 and max(row[160:]) > 200
 
 
 def test_themes_and_main_window(app):
@@ -44,6 +45,8 @@ def test_themes_and_main_window(app):
     w.set_theme(mode="Light")
     assert app.palette().color(QPalette.Window).lightness() > 200
     assert w.settings.accent == "Pink" and w.settings.theme_mode == "Light"
+    w.set_theme(accent="Mono")  # the default: black-and-white
+    assert app.palette().color(QPalette.Highlight).name() == "#111111"
     assert GUIDE.is_file() and "Ryan Ocbina Barnal" in GUIDE.read_text(encoding="utf-8")
     tabs = [w.pages[i][2].tabs.tabText(j) for i in range(4)
             for j in range(w.pages[i][2].tabs.count())]
@@ -81,3 +84,19 @@ def test_tags_table_status_column_fits_window(app):
     assert not tab.table.horizontalScrollBar().isVisible()
     w.grab()
     w.close()
+
+
+def test_every_icon_draws(app):
+    from PySide6.QtGui import QColor
+    from PySide6.QtWidgets import QPushButton
+
+    from dupesort.gui import icons, theme
+
+    theme.apply("Light", "Mono")
+    for kind in icons.KINDS:
+        assert not icons.make(kind, QColor("#111")).pixmap(24, 24).isNull()
+    btn = QPushButton("Scan")
+    btn.setDefault(True)
+    icons.attach(btn, "scan")
+    theme.apply("Dark", "Mono")  # redraws attached button icons without errors
+    assert not btn.icon().isNull()

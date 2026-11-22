@@ -32,7 +32,7 @@ class Settings:
     document_similarity: int = 90  # percent of shared text
     # Appearance
     theme_mode: str = "System"  # System / Light / Dark
-    accent: str = "Sky"
+    accent: str = "Mono"
     play_intro: bool = True
     # General
     keep_strategy: str = "best"

@@ -15,18 +15,21 @@ S = 1024
 
 
 def draw() -> Image.Image:
-    """The app icon is logo 2, "Twin Circles" (see logos.py for all six designs)."""
+    """The app icon is logo 7, "Twin Rings" (see logos.py for all the designs)."""
     sys.path.insert(0, str(OUT))
     from logos import draw as draw_logo
 
-    return draw_logo(2)
+    return draw_logo(7)
 
 
 def main() -> None:
     img = draw()
     img.save(OUT / "icon.png")
     img.save(OUT / "icon.ico", sizes=[(s, s) for s in (16, 24, 32, 48, 64, 128, 256)])
-    if sys.platform == "darwin" and shutil.which("iconutil"):
+    img.resize((512, 512), Image.LANCZOS).save(OUT.parent / "dupesort" / "gui" / "logo.png")
+    if sys.platform != "darwin" or not shutil.which("iconutil"):
+        img.save(OUT / "icon.icns")  # Pillow can write .icns too
+    else:
         iconset = OUT / "icon.iconset"
         iconset.mkdir(exist_ok=True)
         for s in (16, 32, 128, 256, 512):

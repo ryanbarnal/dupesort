@@ -1,4 +1,4 @@
-"""The six DupeSort logo designs, drawn with Pillow so they stay editable.
+"""The DupeSort logo designs, drawn with Pillow so they stay editable.
 
     python packaging/logos.py           # writes packaging/logos/logo<N>.png + sheet.png
 """
@@ -20,6 +20,7 @@ NAMES = {
     4: "Media Grid",
     5: "Magnifier",
     6: "Tidy Folder",
+    7: "Twin Rings",
 }
 
 
@@ -180,7 +181,34 @@ def logo6() -> Image.Image:
     return img
 
 
-LOGOS = {1: logo1, 2: logo2, 3: logo3, 4: logo4, 5: logo5, 6: logo6}
+# Twin Rings in the 512-unit grid of logo7.svg: two thin overlapping rings on a
+# near-black tile, the same line weight as Pulsewave and Tala PDF.
+RING_R, RING_DX, RING_STROKE, TILE_RX = 104, 58, 14, 112
+
+
+def logo7() -> Image.Image:
+    """Twin Rings: the Twin Circles idea redrawn as two thin outline rings (in use)."""
+    k = 8  # draw large, then shrink, for smooth thin lines
+    big, unit = S * k, S * k / 512
+    img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([0, 0, big - 1, big - 1], radius=int(TILE_RX * unit), fill=(10, 10, 10))
+    r, w = RING_R * unit, int(RING_STROKE * unit)
+    for cx in (256 - RING_DX, 256 + RING_DX):
+        x = cx * unit
+        d.ellipse([x - r - w / 2, 256 * unit - r - w / 2, x + r + w / 2, 256 * unit + r + w / 2],
+                  outline=(255, 255, 255), width=w)
+    return img.resize((S, S), Image.LANCZOS)
+
+
+def logo7_svg(fg: str = "#ffffff", bg: str | None = "#0a0a0a") -> str:
+    tile = f'<rect width="512" height="512" rx="{TILE_RX}" fill="{bg}"/>' if bg else ""
+    rings = "".join(f'<circle cx="{256 + s * RING_DX}" cy="256" r="{RING_R}"/>' for s in (-1, 1))
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">{tile}'
+            f'<g fill="none" stroke="{fg}" stroke-width="{RING_STROKE}">{rings}</g></svg>\n')
+
+
+LOGOS = {1: logo1, 2: logo2, 3: logo3, 4: logo4, 5: logo5, 6: logo6, 7: logo7}
 
 
 def draw(n: int) -> Image.Image:
@@ -189,7 +217,8 @@ def draw(n: int) -> Image.Image:
 
 def sheet() -> Image.Image:
     cell, pad = 300, 40
-    w, h = 3 * cell + 4 * pad, 2 * (cell + 60) + 3 * pad
+    rows = (len(LOGOS) + 2) // 3
+    w, h = 3 * cell + 4 * pad, rows * (cell + 60) + (rows + 1) * pad
     out = Image.new("RGB", (w, h), (245, 245, 247))
     d = ImageDraw.Draw(out)
     try:
@@ -210,5 +239,7 @@ if __name__ == "__main__":
     OUT.mkdir(exist_ok=True)
     for n in LOGOS:
         draw(n).save(OUT / f"logo{n}.png")
+    (OUT / "logo7.svg").write_text(logo7_svg(), encoding="utf-8")
+    (OUT / "logo7-mark.svg").write_text(logo7_svg("#111111", None), encoding="utf-8")
     sheet().save(OUT / "sheet.png")
     print("Wrote", OUT)

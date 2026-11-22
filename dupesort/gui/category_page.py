@@ -18,6 +18,7 @@ from ..core.scanner import DUPLICATES_DIR, FileEntry, scan
 from ..music import fingerprint
 from ..music import organizer as music
 from ..settings import Settings
+from . import icons
 from .widgets import DuplicateTree, FolderList, Preview, human_size
 from .worker import Task
 
@@ -40,7 +41,7 @@ class CategoryPage(QWidget):
         self.task: Optional[Task] = None
         self._busy_widgets: list[QWidget] = []
 
-        heading = QLabel(f"<h2>{title}</h2>")
+        heading = QLabel(title, objectName="heading")
         self.folders = FolderList(settings.folders.get(category, []))
         self.folders.changed.connect(self._save_folders)
 
@@ -63,6 +64,7 @@ class CategoryPage(QWidget):
 
         self.scan_btn = QPushButton(f"Scan for duplicate {title.lower()}")
         self.scan_btn.setDefault(True)
+        icons.attach(self.scan_btn, "scan")
         self.scan_btn.clicked.connect(self.start_scan)
         self._busy_widgets.append(self.scan_btn)
 
@@ -80,6 +82,7 @@ class CategoryPage(QWidget):
         self.summary = QLabel("Choose folders and press Scan.")
         self.move_btn = QPushButton(f"Move duplicates to {DUPLICATES_DIR}")
         self.move_btn.setEnabled(False)
+        icons.attach(self.move_btn, "move")
         self.move_btn.clicked.connect(self.move_duplicates)
         self._busy_widgets.append(self.move_btn)
         bar = QHBoxLayout()
@@ -99,6 +102,7 @@ class CategoryPage(QWidget):
         self.status = QLabel("")
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setVisible(False)
+        icons.attach(self.cancel_btn, "close")
         self.cancel_btn.clicked.connect(lambda: self.task and self.task.cancel())
         status_row = QHBoxLayout()
         status_row.addWidget(self.status, 1)
