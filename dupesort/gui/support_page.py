@@ -6,14 +6,16 @@ import platform
 from pathlib import Path
 from urllib.parse import quote
 
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices, QPixmap
+from PySide6.QtCore import QRectF, Qt, QUrl
+from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QGridLayout, QGroupBox, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout,
     QWidget,
 )
 
 from .. import APP_NAME, AUTHOR, DONATE_URL, SUPPORT_EMAIL, __version__
+
+from . import icons
 
 LOGO = Path(__file__).resolve().parent / "logo.png"
 
@@ -32,9 +34,26 @@ CREDITS = [
 
 
 def logo_pixmap(size: int) -> QPixmap:
-    pm = QPixmap(str(LOGO))
-    return pm.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation) if not pm.isNull() \
-        else pm
+    """The logo at ``size`` px (sharp on high-DPI screens). In dark mode it gets
+    a hairline edge so the black tile does not vanish into the dark sidebar."""
+    from .theme import current
+
+    src = QPixmap(str(LOGO))
+    if src.isNull():
+        return src
+    ratio = QGuiApplication.primaryScreen().devicePixelRatio() if QGuiApplication.primaryScreen() \
+        else 1.0
+    px = round(size * ratio)
+    pm = src.scaled(px, px, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    if current.get("dark"):
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(QPen(QColor(current["border"]), max(1.0, ratio)))
+        rad = px * 112 / 512
+        p.drawRoundedRect(QRectF(pm.rect()).adjusted(0.5, 0.5, -0.5, -0.5), rad, rad)
+        p.end()
+    pm.setDevicePixelRatio(ratio)
+    return pm
 
 
 def support_mail_url() -> QUrl:
@@ -47,11 +66,11 @@ def support_mail_url() -> QUrl:
 class SupportPage(QWidget):
     def __init__(self, open_guide, parent=None) -> None:
         super().__init__(parent)
-        logo = QLabel()
+        self.logo = logo = QLabel()
         logo.setPixmap(logo_pixmap(96))
-        title = QLabel(f"<h1 style='margin:0'>{APP_NAME}</h1>"
+        title = QLabel(f"<div style='font-size:26px;font-weight:600'>{APP_NAME}</div>"
                        f"<div>Version {__version__}</div>"
-                       f"<div style='margin-top:6px'>Created by <b>{AUTHOR}</b></div>")
+                       f"<div style='margin-top:6px'>Created by {AUTHOR}</div>")
         head = QHBoxLayout()
         head.addWidget(logo)
         head.addSpacing(12)
@@ -59,8 +78,10 @@ class SupportPage(QWidget):
 
         guide = QPushButton("Open the User Guide")
         guide.setDefault(True)
+        icons.attach(guide, "book")
         guide.clicked.connect(open_guide)
         mail = QPushButton("Contact support by email")
+        icons.attach(mail, "mail")
         mail.clicked.connect(lambda: QDesktopServices.openUrl(support_mail_url()))
         help_box = QGroupBox("Get help")
         hl = QVBoxLayout(help_box)
@@ -77,7 +98,7 @@ class SupportPage(QWidget):
 
         boxes = [help_box]
         if DONATE_URL:
-            donate = QPushButton("♥  Donate")
+            donate = icons.attach(QPushButton("Donate"), "heart")
             donate.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(DONATE_URL)))
             d_box = QGroupBox("Support development")
             dl = QVBoxLayout(d_box)

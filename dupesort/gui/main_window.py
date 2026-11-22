@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, QUrl
 from PySide6.QtGui import (
-    QAction, QActionGroup, QDesktopServices, QGuiApplication, QKeySequence, QPalette,
+    QAction, QActionGroup, QColor, QDesktopServices, QGuiApplication, QKeySequence, QPalette,
 )
 from PySide6.QtWidgets import (
     QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
@@ -34,9 +34,11 @@ class GuideWindow(QDialog):
         self.browser.setOpenExternalLinks(True)
         self.browser.setSource(QUrl.fromLocalFile(str(GUIDE)))
         browser_btn = QPushButton("Open in web browser")
+        icons.attach(browser_btn, "open")
         browser_btn.clicked.connect(lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(GUIDE))))
         close = QPushButton("Close")
+        icons.attach(close, "close")
         close.clicked.connect(self.close)
         row = QHBoxLayout()
         row.addWidget(browser_btn)
@@ -62,23 +64,27 @@ class MainWindow(QMainWindow):
 
         # Sidebar: logo + name, then the section list.
         brand = QHBoxLayout()
-        logo = QLabel()
-        logo.setPixmap(logo_pixmap(40))
+        brand.setSpacing(10)
+        self.logo = logo = QLabel()
+        name = QVBoxLayout()
+        name.setSpacing(0)
+        name.addWidget(QLabel(APP_NAME, objectName="brand"))
+        name.addWidget(QLabel(f"v{__version__}", objectName="version"))
         brand.addWidget(logo)
-        brand.addWidget(QLabel(f"<b style='font-size:17px'>{APP_NAME}</b>"
-                               f"<br><small>v{__version__}</small>"), 1)
+        brand.addLayout(name, 1)
         self.nav = QListWidget()
         self.nav.setObjectName("nav")
-        self.nav.setIconSize(QSize(20, 20))
+        self.nav.setIconSize(QSize(18, 18))
         sidebar = QWidget()
         sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(190)
+        sidebar.setAttribute(Qt.WA_StyledBackground, True)
+        sidebar.setFixedWidth(200)
         sl = QVBoxLayout(sidebar)
-        sl.setContentsMargins(10, 14, 6, 10)
+        sl.setContentsMargins(12, 16, 12, 12)
         sl.addLayout(brand)
-        sl.addSpacing(8)
+        sl.addSpacing(18)
         sl.addWidget(self.nav, 1)
-        sl.addWidget(QLabel(f"<small>by {AUTHOR}</small>", wordWrap=True))
+        sl.addWidget(QLabel(f"by {AUTHOR}", objectName="credit", wordWrap=True))
 
         self.stack = QStackedWidget()
         self.pages = [
@@ -94,7 +100,7 @@ class MainWindow(QMainWindow):
         for name, icon, page in self.pages:
             item = QListWidgetItem(name)
             item.setData(Qt.UserRole, icon)
-            item.setSizeHint(QSize(0, 40))
+            item.setSizeHint(QSize(0, 34))
             self.nav.addItem(item)
             self.stack.addWidget(page)
             if hasattr(page, "history_changed"):
@@ -104,19 +110,27 @@ class MainWindow(QMainWindow):
 
         central = QWidget()
         lay = QHBoxLayout(central)
-        lay.setContentsMargins(0, 0, 8, 0)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
         lay.addWidget(sidebar)
-        lay.addWidget(self.stack, 1)
+        body = QWidget()
+        bl = QVBoxLayout(body)
+        bl.setContentsMargins(20, 14, 20, 10)
+        bl.addWidget(self.stack)
+        lay.addWidget(body, 1)
         self.setCentralWidget(central)
         self._build_menus()
         self._refresh_icons()
         self.statusBar().showMessage("Ready")
 
     def _refresh_icons(self) -> None:
-        color = self.palette().color(QPalette.WindowText)
+        self.logo.setPixmap(logo_pixmap(28))
+        self.support.logo.setPixmap(logo_pixmap(96))
+        muted = QColor(theme.current.get("muted", "#6e6e6b"))
+        text = self.palette().color(QPalette.WindowText)
         for i in range(self.nav.count()):
             item = self.nav.item(i)
-            item.setIcon(icons.make(item.data(Qt.UserRole), color))
+            item.setIcon(icons.make(item.data(Qt.UserRole), muted, selected=text))
 
     # --- menus ------------------------------------------------------------------
     def _build_menus(self) -> None:

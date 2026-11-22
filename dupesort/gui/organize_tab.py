@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from .. import documents, videos
 from ..core.history import Session
+from . import icons
 from ..core.organize import apply_moves, date_source, file_date, plan_date_moves
 
 
@@ -20,6 +21,7 @@ class PlanTab(QWidget):
 
     columns = ["Apply", "File", "From", "To"]
     apply_label = "Apply ticked"
+    apply_icon = "check"
 
     def __init__(self, page) -> None:
         super().__init__()
@@ -27,6 +29,7 @@ class PlanTab(QWidget):
         self.plan: list[tuple] = []  # (FileEntry, target Path, extra text)
         self.controls = QHBoxLayout()
         self.preview_btn = QPushButton("Preview changes")
+        icons.attach(self.preview_btn, "eye")
         self.preview_btn.clicked.connect(self.preview)
         self.build_controls(self.controls)
         self.controls.addWidget(self.preview_btn)
@@ -44,6 +47,7 @@ class PlanTab(QWidget):
         self.summary = QLabel(self.hint())
         self.summary.setWordWrap(True)
         self.apply_btn = QPushButton(self.apply_label)
+        icons.attach(self.apply_btn, self.apply_icon)
         self.apply_btn.clicked.connect(self.apply)
         page._busy_widgets += [self.preview_btn, self.apply_btn]
         bottom = QHBoxLayout()
@@ -130,6 +134,7 @@ class PlanTab(QWidget):
 class DateTab(PlanTab):
     columns = ["Apply", "File", "From", "To", "Date from"]
     apply_label = "Move into date folders"
+    apply_icon = "move"
 
     def build_controls(self, row: QHBoxLayout) -> None:
         self.pattern = QLineEdit(self.settings.date_folder_pattern)
@@ -137,7 +142,8 @@ class DateTab(PlanTab):
                                 "Example: {year}/{year}-{month:02d}")
         self.dest = QLineEdit()
         self.dest.setPlaceholderText("Same folder that was scanned")
-        browse = QPushButton("…")
+        browse = icons.attach(QPushButton(), "folder")
+        browse.setToolTip("Choose a folder")
         browse.clicked.connect(self._browse)
         row.addWidget(QLabel("Folders:"))
         row.addWidget(self.pattern)

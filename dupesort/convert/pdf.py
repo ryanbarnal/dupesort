@@ -214,7 +214,14 @@ def compress_pdf(pdf: Path, out_dir: Optional[Path] = None, image_quality: int =
             except Exception:
                 continue  # unusual image encodings are left as they are
         page.compress_content_streams()
-    writer.compress_identical_objects(remove_identicals=True, remove_orphans=True)
+    # pypdf renamed remove_identicals / remove_orphans to remove_duplicates /
+    # remove_unreferenced; the old names stopped working in pypdf 7.0.
+    import inspect
+
+    if "remove_duplicates" in inspect.signature(writer.compress_identical_objects).parameters:
+        writer.compress_identical_objects(remove_duplicates=True, remove_unreferenced=True)
+    else:
+        writer.compress_identical_objects(remove_identicals=True, remove_orphans=True)
     dst = output_path(pdf, "pdf", out_dir, " (compressed)")
     with open(dst, "wb") as f:
         writer.write(f)

@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.history import history_dir, load_sessions
+from . import icons
 
 
 class HistoryPage(QWidget):
@@ -25,8 +26,10 @@ class HistoryPage(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         undo = QPushButton("Undo selected")
+        icons.attach(undo, "undo")
         undo.clicked.connect(self.undo)
         folder = QPushButton("Open history folder")
+        icons.attach(folder, "folder")
         folder.clicked.connect(lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(history_dir()))))
         row = QHBoxLayout()
@@ -34,7 +37,8 @@ class HistoryPage(QWidget):
         row.addWidget(folder)
         row.addWidget(undo)
         lay = QVBoxLayout(self)
-        lay.addWidget(QLabel("<h2>History</h2>Every move, rename and tag change is recorded "
+        lay.addWidget(QLabel("History", objectName="heading"))
+        lay.addWidget(QLabel("Every move, rename and tag change is recorded "
                              "here. Undo puts files back where they were and restores the "
                              "previous tags."))
         lay.addWidget(self.table, 1)

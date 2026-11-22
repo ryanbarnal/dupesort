@@ -1,5 +1,6 @@
-"""Animated intro: the Twin Circles slide together, their overlap flashes, and
-the DupeSort title and credit appear.
+"""Animated intro: two thin rings draw themselves, slide together into the
+Twin Rings logo, and the DupeSort title and credit fade in. Monochrome, to
+match the rest of the app.
 
 ``paint_intro`` draws one frame for time ``t`` in 0..1, so the same animation
 plays at start-up (``IntroWindow``) and can be rendered to a video file
@@ -11,15 +12,13 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import QElapsedTimer, QPointF, QRectF, Qt, QTimer, Signal
-from PySide6.QtGui import (
-    QColor, QFont, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QRadialGradient,
-)
+from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QWidget
 
 from .. import APP_NAME, AUTHOR
 
 DURATION_MS = 3600
-SKY, PINK = QColor(56, 189, 248), QColor(244, 114, 182)
+BG, FG, MUTED = QColor(10, 10, 10), QColor(255, 255, 255), QColor(143, 143, 140)
 
 
 def _clamp(x: float) -> float:
@@ -48,61 +47,42 @@ def paint_intro(p: QPainter, w: int, h: int, t: float) -> None:
     p.setRenderHint(QPainter.Antialiasing)
     p.setRenderHint(QPainter.TextAntialiasing)
     unit = min(w, h / 0.62) / 1000  # layout units, scales with the frame
+    p.fillRect(QRectF(0, 0, w, h), BG)
+    fade_out = 1 - _seg(t, 0.9, 1.0)
 
-    # Background: deep navy gradient (the logo's tile colours) with a soft glow.
-    bg = QLinearGradient(0, 0, 0, h)
-    bg.setColorAt(0, QColor(15, 23, 42))
-    bg.setColorAt(1, QColor(30, 41, 59))
-    p.fillRect(QRectF(0, 0, w, h), bg)
-    glow_a = _seg(t, 0.3, 0.5) * (1 - _seg(t, 0.85, 1.0))
-    if glow_a > 0:
-        g = QRadialGradient(QPointF(w / 2, h * 0.42), 420 * unit)
-        g.setColorAt(0, QColor(255, 255, 255, int(40 * glow_a)))
-        g.setColorAt(1, QColor(255, 255, 255, 0))
-        p.fillRect(QRectF(0, 0, w, h), g)
-
-    # Circles slide in from the sides, then the pair rises and shrinks a little.
-    slide = _ease_out(_seg(t, 0.04, 0.42))
+    # Each ring draws itself like a pen stroke, while the pair slides together,
+    # then rises a little to make room for the title.
+    draw = _ease_in_out(_seg(t, 0.02, 0.36))
+    slide = _ease_out(_seg(t, 0.12, 0.46))
     rise = _ease_in_out(_seg(t, 0.52, 0.72))
     r = (150 - 40 * rise) * unit
     cy = h * (0.5 - 0.12 * rise)
-    gap = r * 0.74  # final distance of each centre from the middle
-    start = w / 2 + r * 2.2
+    gap = r * 0.56  # final distance of each centre from the middle (as in the logo)
+    start = r * 1.25
     ox = start + (gap - start) * slide
     left, right = QPointF(w / 2 - ox, cy), QPointF(w / 2 + ox, cy)
-    fade_out = 1 - _seg(t, 0.9, 1.0)
-    alpha = int(255 * _seg(t, 0.02, 0.18) * fade_out)
+    stroke = max(1.0, 9 * unit)
 
-    for centre, col in ((left, SKY), (right, PINK)):
-        c = QColor(col)
-        c.setAlpha(int(alpha * 0.9))
-        p.setPen(Qt.NoPen)
-        p.setBrush(c)
-        p.drawEllipse(centre, r, r)
-
-    # The overlap ("the duplicate") lights up white once they meet.
-    lens_a = _seg(t, 0.38, 0.48) * fade_out
+    # The overlap ("the duplicate") glows softly once, then settles.
+    lens_a = _seg(t, 0.4, 0.5) * (1 - _seg(t, 0.5, 0.75)) * fade_out
     if lens_a > 0:
         a, b = QPainterPath(), QPainterPath()
         a.addEllipse(left, r, r)
         b.addEllipse(right, r, r)
-        p.setBrush(QColor(255, 255, 255, int(255 * lens_a)))
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(255, 255, 255, int(70 * lens_a)))
         p.drawPath(a.intersected(b))
 
-    # A burst of sparkles from the overlap at the moment of the flash.
-    burst = _seg(t, 0.42, 0.75)
-    if 0 < burst < 1:
-        for i in range(14):
-            ang = i / 14 * 2 * math.pi + 0.3
-            dist = (r * 0.4 + 260 * unit * _ease_out(burst)) * (0.8 + 0.4 * ((i * 7) % 5) / 5)
-            x, y = w / 2 + math.cos(ang) * dist, cy + math.sin(ang) * dist * 0.8
-            size = (7 - 5 * burst) * unit * (1.4 if i % 3 == 0 else 1)
-            col = QColor(SKY if i % 2 else PINK) if i % 3 else QColor(255, 255, 255)
-            col.setAlpha(int(230 * (1 - burst) * fade_out))
-            p.setBrush(col)
-            p.drawEllipse(QPointF(x, y), size, size)
+    ring = QColor(FG)
+    ring.setAlpha(int(255 * fade_out))
+    p.setPen(QPen(ring, stroke, Qt.SolidLine, Qt.RoundCap))
+    p.setBrush(Qt.NoBrush)
+    span = int(-360 * 16 * draw)
+    if span:
+        p.drawArc(QRectF(left.x() - r, cy - r, 2 * r, 2 * r), 90 * 16, span)
+        p.drawArc(QRectF(right.x() - r, cy - r, 2 * r, 2 * r), 270 * 16, span)
 
-    # Title, tagline and credit slide up and fade in, one after another.
+    # Title, tagline and credit rise and fade in, one after another.
     def text(s: str, size: float, weight: int, y: float, start_t: float, color: QColor,
              spacing: float = 0) -> None:
         k = _ease_out(_seg(t, start_t, start_t + 0.16))
@@ -116,14 +96,13 @@ def paint_intro(p: QPainter, w: int, h: int, t: float) -> None:
         c = QColor(color)
         c.setAlpha(int(255 * k * fade_out))
         p.setPen(c)
-        rect = QRectF(0, y + (1 - k) * 30 * unit, w, size * unit * 1.5)
+        rect = QRectF(0, y + (1 - k) * 16 * unit, w, size * unit * 1.5)
         p.drawText(rect, Qt.AlignHCenter | Qt.AlignTop, s)
 
-    base = cy + r + 40 * unit
-    text(APP_NAME, 96, 800, base, 0.58, QColor(255, 255, 255), 2)
-    text("Find duplicates. Keep the best.", 30, 500, base + 125 * unit, 0.66,
-         QColor(203, 213, 225))
-    text(f"by {AUTHOR}", 22, 600, base + 180 * unit, 0.74, QColor(148, 163, 184), 3)
+    base = cy + r + 44 * unit
+    text(APP_NAME, 84, 300, base, 0.58, FG, 1)
+    text("FIND DUPLICATES. KEEP THE BEST.", 20, 500, base + 118 * unit, 0.66, MUTED, 5)
+    text(f"by {AUTHOR}", 20, 400, base + 160 * unit, 0.74, MUTED, 1)
 
 
 class IntroWindow(QWidget):
@@ -170,7 +149,7 @@ class IntroWindow(QWidget):
         f = QFont()
         f.setPixelSize(11)
         p.setFont(f)
-        p.setPen(QColor(148, 163, 184, 140))
+        p.setPen(QColor(143, 143, 140, 140))
         p.drawText(self.rect().adjusted(0, 0, -12, -8), Qt.AlignRight | Qt.AlignBottom,
                    "Click to skip")
         p.end()

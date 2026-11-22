@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from ..core.duplicates import DuplicateGroup
 from ..core.scanner import FileEntry
+from . import icons
 
 
 def human_size(n: float) -> str:
@@ -68,6 +69,10 @@ class FolderList(QWidget):
         self.list.addItems(folders)
         self.list.setMaximumHeight(90)
         add, remove = QPushButton("Add folder…"), QPushButton("Remove")
+        icons.attach(add, "folder-plus")
+        icons.attach(remove, "minus")
+        add.setStyleSheet("text-align: left")
+        remove.setStyleSheet("text-align: left")
         add.clicked.connect(self._add)
         remove.clicked.connect(self._remove)
         buttons = QVBoxLayout()
@@ -177,6 +182,8 @@ class Preview(QWidget):
         self.text = QLabel(wordWrap=True, textInteractionFlags=Qt.TextSelectableByMouse)
         self.text.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         open_btn, show_btn = QPushButton("Open"), QPushButton("Show in folder")
+        icons.attach(open_btn, "open")
+        icons.attach(show_btn, "folder")
         open_btn.clicked.connect(lambda: self.entry and QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(self.entry.path))))
         show_btn.clicked.connect(lambda: self.entry and reveal(self.entry.path))

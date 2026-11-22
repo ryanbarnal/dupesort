@@ -34,9 +34,9 @@ Each section has a convert tab. Originals are never changed; new files are saved
 
 ## Look and feel
 
-- **Light, dark or match-system** mode, plus eight accent colours: View → Appearance, or Settings.
+- **Minimal, monochrome design** in the same style as Pulsewave and Tala PDF: hairline borders, flat buttons, and thin outline icons on every command button. **Light, dark or match-system** mode. The default accent, **Mono**, keeps everything black-and-white; eight colour accents are also available (View → Appearance, or Settings).
 - **Animated intro** at start-up, which you can skip with a click or turn off in View or Settings. `python packaging/render_intro.py` exports it as a 1080p video (`--vertical` gives 1080×1920 for Reels/TikTok).
-- **Logo:** "Twin Circles". The other five designs live in `packaging/logos.py`.
+- **Logo:** "Twin Rings": two thin white rings on a black tile (`packaging/logos/logo7.svg`). The earlier designs are still in `packaging/logos.py`. After changing it, run `python packaging/logos.py` and `python packaging/make_icons.py`.
 - **Help & Support** page: user guide, email support (version and OS are pre-filled), credits, and an optional **Donate** button. Set `DONATE_URL` in `dupesort/__init__.py` to show it.
 
 ## Run from source
