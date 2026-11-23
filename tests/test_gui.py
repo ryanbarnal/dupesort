@@ -100,3 +100,30 @@ def test_every_icon_draws(app):
     icons.attach(btn, "scan")
     theme.apply("Dark", "Mono")  # redraws attached button icons without errors
     assert not btn.icon().isNull()
+
+
+def test_page_layout_folders_and_update_bar(app, monkeypatch):
+    from dupesort import updates
+    from dupesort.gui.main_window import MainWindow
+
+    w = MainWindow()
+    page = w.pages[0][2]
+    page.folders.add_folder("/a/Music")
+    page.folders.add_folder("/b/Music")
+    page.folders.add_folder("/b/Music")  # already there
+    assert page.folders.folders() == ["/a/Music", "/b/Music"]
+    assert w.settings.folders["music"] == ["/a/Music", "/b/Music"]
+    # Scan is the page's main button only while Duplicates is showing.
+    assert page.scan_btn.isDefault()
+    page.switch.setCurrentIndex(2)
+    assert page.tabs.currentIndex() == 2 and not page.scan_btn.isDefault()
+
+    opened = []
+    monkeypatch.setattr("dupesort.gui.update_bar.QDesktopServices.openUrl",
+                        lambda url: opened.append(url.toString()))
+    w.update_bar.offer(updates.Release("9.0.0", "https://example.com/rel", "", {}))
+    assert not w.update_bar.isHidden() and "9.0.0" in w.update_bar.text.text()
+    w.update_bar.install_btn.click()  # from source: opens the release page
+    assert opened == ["https://example.com/rel"]
+    w.update_bar.skip_btn.click()
+    assert w.update_bar.isHidden() and w.settings.skipped_update == "9.0.0"

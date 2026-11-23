@@ -43,12 +43,14 @@ out of the way, organizes what's left, and converts files between formats.
 <b>Videos</b> and <b>Documents</b>. It also has <b>History</b> and <b>Help &amp; Support</b>.
 Each section works the same way:</p>
 <ol>
-  <li>Click <b>Add folder…</b> and choose the folders to check (for example your Music
-      folder and an old backup drive). DupeSort remembers them.</li>
-  <li>Press <b>Scan</b>. Large libraries can take a few minutes. The bar at the bottom
-      shows progress, and <b>Cancel</b> stops the scan.</li>
-  <li>Review the results and choose what to do. The tabs along the top of each section hold
-      the tools.</li>
+  <li>Next to <b>Folders</b>, click <b>Add folder…</b> and choose the folders to check (for
+      example your Music folder and an old backup drive). Each folder shows as a chip; click a
+      chip to remove it. DupeSort remembers them.</li>
+  <li>Press <b>Scan folders</b> at the top right. Large libraries can take a few minutes. The
+      bar at the bottom shows progress, and <b>Cancel</b> stops the scan.</li>
+  <li>Use the switch under the folders to pick what to do with the scanned files:
+      <b>Duplicates</b>, then tools such as <b>Tags, lyrics &amp; rename</b> or <b>Convert</b>.
+      Each has its own options at the top and its own main button at the bottom right.</li>
 </ol>
 
 <h2 id="dupes">2. Finding and moving duplicates</h2>
@@ -57,7 +59,7 @@ Each section works the same way:</p>
 <table>
   <tr><th>Reason</th><th>Meaning</th></tr>
   <tr><td>Identical file</td><td>Byte-for-byte the same file.</td></tr>
-  <tr><td>Same artist &amp; title</td><td>Songs with the same artist and title, and a length within 3 seconds.</td></tr>
+  <tr><td>Same artist &amp; title</td><td>Songs with the same artist and title, and a length within 3 seconds. With <b>Keep versions apart</b> on (the default), live, acoustic, unplugged, remix, demo, instrumental and other versions of a song are never matched with the studio take, or with each other. DupeSort reads the version from the title ("Song (Acoustic)"), the file name, the album ("MTV Unplugged"), the genre ("Live") and the folder name ("Live in Concert 2004"). Remasters and radio edits count as the same song.</td></tr>
   <tr><td>Same sound</td><td>The same recording identified by its audio fingerprint, even in a different format or bitrate (e.g. an MP3 and a FLAC).</td></tr>
   <tr><td>Similar image</td><td>The same photo resized, re-saved or slightly edited.</td></tr>
   <tr><td>Same video</td><td>The same video re-encoded at another size or quality.</td></tr>
@@ -188,6 +190,14 @@ conversion, delete the new files.</p>
 black-and-white; the others are Sky, Pink,
 Indigo, Teal, Green, Orange, Purple or Slate. Changes apply immediately. You can also turn
 the animated intro on or off.</p>
+
+<h3 id="updates">Updates</h3>
+<p>DupeSort checks for a new version shortly after it starts and every few hours. When one is
+out, a bar appears at the top of the window. On Windows, <b>Install update</b> downloads it,
+installs it and opens the new version. On macOS and Linux, <b>Download</b> fetches the new
+disk image or archive and shows it; drag DupeSort into Applications (or extract it) to replace
+the old copy. <b>Skip this version</b> hides that version, and <b>Help → Check for
+updates…</b> checks at any time. Turn the automatic check off in <b>Settings</b>.</p>
 
 <h2 id="settings">10. Settings and free API keys</h2>
 <ul>

@@ -7,8 +7,8 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox,
-    QProgressBar, QPushButton, QSpinBox, QSplitter, QTabWidget, QVBoxLayout, QWidget,
+    QCheckBox, QComboBox, QHBoxLayout, QLabel, QMessageBox,
+    QProgressBar, QPushButton, QSpinBox, QSplitter, QTabBar, QTabWidget, QVBoxLayout, QWidget,
 )
 
 from .. import documents, photos, videos
@@ -41,34 +41,46 @@ class CategoryPage(QWidget):
         self.task: Optional[Task] = None
         self._busy_widgets: list[QWidget] = []
 
+        # Header: title on the left, the page's main action on the right. Scanning
+        # collects the files that every section below works with.
         heading = QLabel(title, objectName="heading")
+        sub = QLabel(f"Scan your folders once, then find duplicates{self.subtitle()}.",
+                     objectName="muted")
+        titles = QVBoxLayout()
+        titles.setSpacing(0)
+        titles.addWidget(heading)
+        titles.addWidget(sub)
+        self.scan_btn = QPushButton("Scan folders")
+        self.scan_btn.setDefault(True)
+        self.scan_btn.setToolTip(f"Find all {title.lower()} in the folders below and look for "
+                                 "duplicates")
+        icons.attach(self.scan_btn, "scan")
+        self.scan_btn.clicked.connect(self.start_scan)
+        self._busy_widgets.append(self.scan_btn)
+        header = QHBoxLayout()
+        header.addLayout(titles, 1)
+        header.addWidget(self.scan_btn, 0, Qt.AlignBottom)
+
+        # Folders, as removable chips.
         self.folders = FolderList(settings.folders.get(category, []))
         self.folders.changed.connect(self._save_folders)
+        folders_row = QHBoxLayout()
+        label = QLabel("Folders", objectName="fieldLabel")
+        label.setStyleSheet("padding-top: 4px")
+        folders_row.addWidget(label, 0, Qt.AlignTop)
+        folders_row.addWidget(self.folders, 1)
 
-        src = QGroupBox("Folders to scan")
-        QVBoxLayout(src).addWidget(self.folders)
-
-        self.options = QFormLayout()
+        # Duplicates section: its options, the results, and its own action.
         self.keep = QComboBox()
         for key, label in KEEP_STRATEGIES.items():
             self.keep.addItem(label, key)
         self.keep.setCurrentIndex(max(0, self.keep.findData(settings.keep_strategy)))
-        self.options.addRow("Keep which copy:", self.keep)
+        self.options = QHBoxLayout()
+        self.options.setSpacing(8)
+        self.add_option("Keep", self.keep)
         self.add_options(self.options)
-        opts = QGroupBox("Options")
-        opts.setLayout(self.options)
+        self.options.addStretch()
 
-        top = QHBoxLayout()
-        top.addWidget(src, 3)
-        top.addWidget(opts, 2)
-
-        self.scan_btn = QPushButton(f"Scan for duplicate {title.lower()}")
-        self.scan_btn.setDefault(True)
-        icons.attach(self.scan_btn, "scan")
-        self.scan_btn.clicked.connect(self.start_scan)
-        self._busy_widgets.append(self.scan_btn)
-
-        # Duplicates tab
         self.tree = DuplicateTree()
         self.preview = Preview(show_images=category == "photos")
         self.preview.show_entry(None)
@@ -79,7 +91,7 @@ class CategoryPage(QWidget):
         split.addWidget(self.preview)
         split.setStretchFactor(0, 3)
         split.setStretchFactor(1, 1)
-        self.summary = QLabel("Choose folders and press Scan.")
+        self.summary = QLabel("Add folders and press Scan folders.", objectName="muted")
         self.move_btn = QPushButton(f"Move duplicates to {DUPLICATES_DIR}")
         self.move_btn.setEnabled(False)
         icons.attach(self.move_btn, "move")
@@ -90,16 +102,34 @@ class CategoryPage(QWidget):
         bar.addWidget(self.move_btn)
         dup_tab = QWidget()
         dl = QVBoxLayout(dup_tab)
+        dl.setContentsMargins(0, 12, 0, 0)
+        dl.addLayout(self.options)
         dl.addWidget(split, 1)
         dl.addLayout(bar)
 
-        self.tabs = QTabWidget()
+        # Sections, shown as a segmented switch.
+        self.tabs = QTabWidget(objectName="sections")
+        self.tabs.setDocumentMode(True)
+        self.tabs.tabBar().hide()  # the compact switch below stands in for it
         self.tabs.addTab(dup_tab, "Duplicates")
         self.add_tabs(self.tabs)
+        self.switch = QTabBar(objectName="segments")
+        self.switch.setDrawBase(False)
+        self.switch.setExpanding(False)
+        self.switch.setUsesScrollButtons(False)
+        for i in range(self.tabs.count()):
+            self.switch.addTab(self.tabs.tabText(i))
+        self.switch.currentChanged.connect(self.tabs.setCurrentIndex)
+        self.tabs.currentChanged.connect(self.switch.setCurrentIndex)
+        self.tabs.currentChanged.connect(self._section_changed)
+        switch_row = QHBoxLayout()
+        switch_row.addWidget(self.switch)
+        switch_row.addStretch()
 
+        # Progress for whatever is running, at the bottom of the page.
         self.progress = QProgressBar()
         self.progress.setVisible(False)
-        self.status = QLabel("")
+        self.status = QLabel("", objectName="muted")
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setVisible(False)
         icons.attach(self.cancel_btn, "close")
@@ -110,19 +140,40 @@ class CategoryPage(QWidget):
         status_row.addWidget(self.cancel_btn)
 
         lay = QVBoxLayout(self)
-        lay.addWidget(heading)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(10)
+        lay.addLayout(header)
+        lay.addLayout(folders_row)
         notice = self.notice()
         if notice:
             n = QLabel(notice, wordWrap=True, openExternalLinks=True)
             n.setObjectName("notice")
             lay.addWidget(n)
-        lay.addLayout(top)
-        lay.addWidget(self.scan_btn)
+        lay.addSpacing(4)
+        lay.addLayout(switch_row)
         lay.addWidget(self.tabs, 1)
         lay.addLayout(status_row)
 
+    def _section_changed(self, index: int) -> None:
+        """Scan is the filled main button only in Duplicates; other sections have their own."""
+        self.scan_btn.setDefault(index == 0)
+        self.scan_btn.style().unpolish(self.scan_btn)
+        self.scan_btn.style().polish(self.scan_btn)
+        icons.attach(self.scan_btn, "scan")
+
+    def add_option(self, label: str, widget: QWidget) -> None:
+        """Add ``label`` + ``widget`` to the Duplicates section's option row."""
+        if label:
+            self.options.addSpacing(10 if self.options.count() else 0)
+            self.options.addWidget(QLabel(label, objectName="fieldLabel"))
+        self.options.addWidget(widget)
+
+    def subtitle(self) -> str:
+        """Extra words for the line under the title, e.g. ", fix tags or convert"."""
+        return ""
+
     # --- hooks for subclasses ----------------------------------------------
-    def add_options(self, form: QFormLayout) -> None:
+    def add_options(self, row: QHBoxLayout) -> None:
         pass
 
     def add_tabs(self, tabs: QTabWidget) -> None:
@@ -227,7 +278,7 @@ class CategoryPage(QWidget):
         wasted = sum(g.wasted_bytes for g in self.groups)
         if not self.groups:
             self.summary.setText("No duplicates found." if self.files else
-                                 "Choose folders and press Scan.")
+                                 "Add folders and press Scan folders.")
         else:
             self.summary.setText(f"{len(self.groups)} groups · {dupes} duplicates · "
                                  f"{human_size(wasted)} can be freed. Ticked files are kept.")
@@ -273,14 +324,27 @@ class CategoryPage(QWidget):
 
 
 class MusicPage(CategoryPage):
-    def add_options(self, form: QFormLayout) -> None:
-        self.by_tags = QCheckBox("Same artist && title (and length)")
+    def subtitle(self) -> str:
+        return ", fix tags and lyrics, or convert"
+
+    def add_options(self, row: QHBoxLayout) -> None:
+        self.by_tags = QCheckBox("Same artist && title")
+        self.by_tags.setToolTip("Same artist, title and length (within 3 seconds)")
         self.by_tags.setChecked(self.settings.music_match_by_tags)
-        self.by_sound = QCheckBox("Same sound (acoustic fingerprint)")
+        self.by_sound = QCheckBox("Same sound")
+        self.by_sound.setToolTip("Acoustic fingerprint: finds the same recording in "
+                                 "different formats and bitrates")
         self.by_sound.setChecked(self.settings.music_match_by_fingerprint and fingerprint.available())
         self.by_sound.setEnabled(fingerprint.available())
-        form.addRow("Also match:", self.by_tags)
-        form.addRow("", self.by_sound)
+        self.versions = QCheckBox("Keep versions apart")
+        self.versions.setToolTip(
+            "Live, acoustic, unplugged, remix, demo, instrumental and other versions of a song "
+            "are not duplicates of each other.\nThe version is read from the title, the file "
+            "name, the album, the genre and the folder name.")
+        self.versions.setChecked(self.settings.music_separate_versions)
+        self.add_option("Match", self.by_tags)
+        self.add_option("", self.by_sound)
+        self.add_option("", self.versions)
 
     def notice(self) -> str:
         if fingerprint.available():
@@ -291,6 +355,7 @@ class MusicPage(CategoryPage):
     def apply_options(self) -> None:
         self.settings.music_match_by_tags = self.by_tags.isChecked()
         self.settings.music_match_by_fingerprint = self.by_sound.isChecked()
+        self.settings.music_separate_versions = self.versions.isChecked()
 
     def add_tabs(self, tabs: QTabWidget) -> None:
         from .music_tab import TagTab
@@ -303,13 +368,16 @@ class MusicPage(CategoryPage):
 
 
 class PhotoPage(CategoryPage):
-    def add_options(self, form: QFormLayout) -> None:
+    def subtitle(self) -> str:
+        return ", sort by date, or convert and resize"
+
+    def add_options(self, row: QHBoxLayout) -> None:
         self.threshold = QSpinBox()
         self.threshold.setRange(0, 20)
         self.threshold.setValue(self.settings.photo_threshold)
         self.threshold.setToolTip("0 = only identical files. 4-8 catches resized or "
                                   "re-saved copies. Higher values may group similar shots.")
-        form.addRow("Similarity tolerance:", self.threshold)
+        self.add_option("Tolerance", self.threshold)
 
     def apply_options(self) -> None:
         self.settings.photo_threshold = self.threshold.value()
@@ -323,12 +391,15 @@ class PhotoPage(CategoryPage):
 
 
 class VideoPage(CategoryPage):
-    def add_options(self, form: QFormLayout) -> None:
+    def subtitle(self) -> str:
+        return ", sort and rename, or convert"
+
+    def add_options(self, row: QHBoxLayout) -> None:
         self.threshold = QSpinBox()
         self.threshold.setRange(0, 20)
         self.threshold.setValue(self.settings.video_threshold)
         self.threshold.setEnabled(videos.ffmpeg_available())
-        form.addRow("Similarity tolerance:", self.threshold)
+        self.add_option("Tolerance", self.threshold)
 
     def notice(self) -> str:
         if videos.ffmpeg_available():
@@ -351,14 +422,17 @@ class VideoPage(CategoryPage):
 
 
 class DocumentPage(CategoryPage):
-    def add_options(self, form: QFormLayout) -> None:
+    def subtitle(self) -> str:
+        return ", sort by type, or use the PDF tools"
+
+    def add_options(self, row: QHBoxLayout) -> None:
         self.similarity = QSpinBox()
         self.similarity.setRange(50, 100)
         self.similarity.setSuffix(" %")
         self.similarity.setValue(self.settings.document_similarity)
         self.similarity.setToolTip("How much text two documents must share to count as the "
                                    "same document (e.g. a .docx and its exported .pdf).")
-        form.addRow("Same text if at least:", self.similarity)
+        self.add_option("Same text if at least", self.similarity)
 
     def apply_options(self) -> None:
         self.settings.document_similarity = self.similarity.value()

@@ -118,3 +118,36 @@ def test_low_confidence_needs_review(tmp_path, monkeypatch):
     p = make_wav(tmp_path / "Somebody - Something Else.wav")
     prop = organizer.build_proposal(p, Settings())
     assert prop.match is not None and prop.confidence < 90 and not prop.apply
+
+
+def test_live_acoustic_and_unplugged_versions_are_not_duplicates(tmp_path):
+    from dupesort.music.organizer import version_of
+
+    specs = {  # file: (tags, folder)
+        "studio.wav": ({"artist": "Band", "title": "Song", "album": "Debut"}, "Debut"),
+        "studio copy.wav": ({"artist": "Band", "title": "Song", "album": "Debut"}, "Copies"),
+        "acoustic.wav": ({"artist": "Band", "title": "Song (Acoustic)"}, "Singles"),
+        "unplugged.wav": ({"artist": "Band", "title": "Song", "album": "MTV Unplugged"}, "x"),
+        "concert.wav": ({"artist": "Band", "title": "Song"}, "Live in Concert 2004"),
+        "genre.wav": ({"artist": "Band", "title": "Song", "genre": "Live"}, "y"),
+        "remaster.wav": ({"artist": "Band", "title": "Song (Remastered 2011)"}, "z"),
+    }
+    for name, (tags, folder) in specs.items():
+        p = make_wav(tmp_path / folder / name, seconds=2.0)
+        write_tags(p, tags)
+    files = scan([tmp_path], "music")
+    groups = organizer.find_duplicates(files, Settings(music_match_by_fingerprint=False))
+    # The studio takes match each other, and so do the two live takes - but a live,
+    # acoustic or unplugged take never matches the studio one.
+    assert sorted(sorted(f.path.name for f in g.files) for g in groups) == \
+        [["concert.wav", "genre.wav"], ["remaster.wav", "studio copy.wav", "studio.wav"]]
+
+    # Turning the option off groups every take of the song together again.
+    off = Settings(music_match_by_fingerprint=False, music_separate_versions=False)
+    assert len(organizer.find_duplicates(scan([tmp_path], "music"), off)[0].files) == 7
+
+    # "Live" in the song's own name is not a live recording.
+    oasis = make_wav(tmp_path / "o" / "Oasis - Live Forever.wav")
+    [entry] = [f for f in scan([tmp_path / "o"], "music")]
+    entry.info["tags"] = {}
+    assert version_of(entry) == frozenset() and oasis.exists()

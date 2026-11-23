@@ -23,6 +23,8 @@ class Settings:
     music_rename_pattern: str = "{artist} - {title}"
     music_match_by_tags: bool = True
     music_match_by_fingerprint: bool = True
+    # Live, acoustic, unplugged, remix… takes of a song are not duplicates of each other.
+    music_separate_versions: bool = True
     auto_apply_confidence: int = 90  # 0-100; lower-scored matches go to review
     # Photos / videos
     photo_threshold: int = 6  # perceptual-hash bit difference, 0 = identical
@@ -34,6 +36,9 @@ class Settings:
     theme_mode: str = "System"  # System / Light / Dark
     accent: str = "Mono"
     play_intro: bool = True
+    # Updates
+    check_updates: bool = True
+    skipped_update: str = ""  # a version the user chose to skip
     # General
     keep_strategy: str = "best"
     min_size_kb: int = 1

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, QUrl
+from PySide6.QtCore import QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import (
     QAction, QActionGroup, QColor, QDesktopServices, QGuiApplication, QKeySequence, QPalette,
 )
 from PySide6.QtWidgets import (
-    QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
+    QApplication, QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
     QPushButton, QStackedWidget, QTextBrowser, QVBoxLayout, QWidget,
 )
 
@@ -21,6 +21,7 @@ from .category_page import DocumentPage, MusicPage, PhotoPage, VideoPage
 from .history_page import HistoryPage
 from .settings_dialog import SettingsDialog
 from .support_page import SupportPage, logo_pixmap
+from .update_bar import UpdateBar
 
 GUIDE = Path(__file__).resolve().parent / "guide.html"
 
@@ -108,8 +109,16 @@ class MainWindow(QMainWindow):
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
         self.nav.setCurrentRow(0)
 
+        self.update_bar = UpdateBar(self.settings)
+        self.update_bar.quit_requested.connect(self._quit_for_update)
+
         central = QWidget()
-        lay = QHBoxLayout(central)
+        outer = QVBoxLayout(central)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        outer.addWidget(self.update_bar)
+        lay = QHBoxLayout()
+        outer.addLayout(lay, 1)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
         lay.addWidget(sidebar)
@@ -122,6 +131,20 @@ class MainWindow(QMainWindow):
         self._build_menus()
         self._refresh_icons()
         self.statusBar().showMessage("Ready")
+
+        # Look for a new version shortly after start-up, then every 6 hours.
+        self.update_timer = QTimer(self, interval=6 * 60 * 60 * 1000)
+        self.update_timer.timeout.connect(self._auto_check_updates)
+        QTimer.singleShot(8000, self._auto_check_updates)
+        self.update_timer.start()
+
+    def _auto_check_updates(self) -> None:
+        if self.settings.check_updates and not self.update_bar.isVisible():
+            self.update_bar.check(manual=False)
+
+    def _quit_for_update(self) -> None:
+        if self.close():
+            QApplication.instance().quit()
 
     def _refresh_icons(self) -> None:
         self.logo.setPixmap(logo_pixmap(28))
@@ -179,12 +202,15 @@ class MainWindow(QMainWindow):
         guide = QAction(f"{APP_NAME} User Guide", self)
         guide.setShortcut(QKeySequence.HelpContents)
         guide.triggered.connect(self.open_guide)
+        check = QAction("Check for updates…", self)
+        check.setMenuRole(QAction.ApplicationSpecificRole)
+        check.triggered.connect(lambda: self.update_bar.check(manual=True))
         support = QAction("Help && Support", self)
         support.triggered.connect(lambda: self.nav.setCurrentRow(len(self.pages) - 1))
         about = QAction(f"About {APP_NAME}", self)
         about.setMenuRole(QAction.AboutRole)
         about.triggered.connect(self.about)
-        for a in (guide, support):
+        for a in (guide, support, check):
             help_menu.addAction(a)
         help_menu.addSeparator()
         help_menu.addAction(about)

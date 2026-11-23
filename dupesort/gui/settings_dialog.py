@@ -83,6 +83,9 @@ class SettingsDialog(QDialog):
         look.addRow("Light / dark:", self.mode)
         look.addRow("Accent colour:", self.accent)
         look.addRow("", self.intro)
+        self.updates = QCheckBox("Check for new versions automatically")
+        self.updates.setChecked(s.check_updates)
+        look.addRow("Updates:", self.updates)
         look_box = QGroupBox("Appearance")
         look_box.setLayout(look)
 
@@ -115,5 +118,6 @@ class SettingsDialog(QDialog):
         s.theme_mode = self.mode.currentText()
         s.accent = self.accent.currentText()
         s.play_intro = self.intro.isChecked()
+        s.check_updates = self.updates.isChecked()
         s.save()
         super().accept()
