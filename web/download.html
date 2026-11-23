@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download DupeSort for Windows, macOS and Linux</title>
+  <meta name="description" content="DupeSort finds duplicate music, photos, videos and documents, moves the extra copies aside, fixes song tags and lyrics, and converts files. Free for Windows, macOS and Linux.">
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-512.png">
+  <link rel="stylesheet" href="css/style.css">
+  <script>try{var t=localStorage.getItem('dupesort-theme');if(t&&t!=='auto')document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./"><img src="logo.svg" alt="">DupeSort</a>
+    <nav class="nav">
+      <a href="./">Web app</a>
+      <a href="download.html" aria-current="page">Download</a>
+      <a class="hide-sm" href="https://github.com/ryanbarnal/dupesort">GitHub</a>
+    </nav>
+    <button class="icon-btn" id="theme" type="button"></button>
+  </header>
+
+  <main>
+    <div class="dl-hero">
+      <img src="icon-512.png" alt="DupeSort">
+      <div>
+        <h1>DupeSort</h1>
+        <p>Find duplicate music, photos, videos and documents, move the extra copies aside, fix song
+          tags and lyrics, and convert files. Nothing is ever deleted, and every change can be undone.</p>
+        <div class="row">
+          <a class="btn primary lg" id="main-dl" href="https://github.com/ryanbarnal/dupesort/releases/latest"><i data-icon="download"></i>Download</a>
+          <a class="btn lg" href="./"><i data-icon="web"></i>Use in the browser</a>
+        </div>
+        <p class="small muted" id="version" style="margin:10px 0 0"></p>
+      </div>
+    </div>
+
+    <div class="cards" id="cards">
+      <div class="card" data-os="Windows">
+        <h3><i data-icon="windows"></i>Windows</h3>
+        <p>Windows 10 or 11 (64-bit). Installs for your account, no admin needed. Updates install themselves.</p>
+        <a class="btn" data-asset="windows" href="https://github.com/ryanbarnal/dupesort/releases/latest"><i data-icon="download"></i>Setup.exe</a>
+      </div>
+      <div class="card" data-os="macOS">
+        <h3><i data-icon="apple"></i>macOS</h3>
+        <p>Apple Silicon Macs. Open the disk image and drag DupeSort into Applications.</p>
+        <a class="btn" data-asset="mac" href="https://github.com/ryanbarnal/dupesort/releases/latest"><i data-icon="download"></i>Disk image (.dmg)</a>
+      </div>
+      <div class="card" data-os="Linux">
+        <h3><i data-icon="linux"></i>Linux</h3>
+        <p>64-bit Linux. Extract the archive and run <code>DupeSort/DupeSort</code>.</p>
+        <a class="btn" data-asset="linux" href="https://github.com/ryanbarnal/dupesort/releases/latest"><i data-icon="download"></i>Archive (.tar.gz)</a>
+      </div>
+    </div>
+
+    <section>
+      <h2>Desktop app or web app?</h2>
+      <p>The web app is handy for a quick check. The desktop app does everything.</p>
+      <table class="compare">
+        <thead><tr><th></th><th>Web</th><th>Desktop</th></tr></thead>
+        <tbody>
+          <tr><td>Identical files of any kind</td><td>✓</td><td>✓</td></tr>
+          <tr><td>Songs with the same artist &amp; title, versions kept apart</td><td>✓</td><td>✓</td></tr>
+          <tr><td>Resized and re-saved photos</td><td>✓</td><td>✓</td></tr>
+          <tr><td>Move duplicates to <code>_Duplicates</code>, with undo</td><td>Chrome, Edge</td><td>✓</td></tr>
+          <tr><td>The same song in another format, found by its sound</td><td>–</td><td>✓</td></tr>
+          <tr><td>Re-encoded videos; a document and its PDF</td><td>–</td><td>✓</td></tr>
+          <tr><td>Look up song tags, cover art and lyrics; rename files</td><td>–</td><td>✓</td></tr>
+          <tr><td>Sort photos and videos into date folders; movie and TV names</td><td>–</td><td>✓</td></tr>
+          <tr><td>Convert music, photos, videos and PDFs</td><td>–</td><td>✓</td></tr>
+          <tr><td>History of every change</td><td>–</td><td>✓</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>First time opening it</h2>
+      <p>The installers aren't signed with a paid certificate yet, so your computer asks once.</p>
+      <ol class="steps">
+        <li><strong>Windows:</strong> if SmartScreen appears, click <b>More info → Run anyway</b>.</li>
+        <li><strong>macOS:</strong> right-click DupeSort in Applications → <b>Open</b> → <b>Open</b>. On recent
+          versions, use <b>System Settings → Privacy &amp; Security → Open Anyway</b>.</li>
+        <li><strong>Optional:</strong> install <a href="https://acoustid.org/chromaprint">Chromaprint</a> to match
+          songs by sound, and <a href="https://ffmpeg.org/download.html">FFmpeg</a> for videos and audio conversion.</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <div class="inner">
+      <span>DupeSort by Ryan Ocbina Barnal</span>
+      <span><a href="https://github.com/ryanbarnal/dupesort/releases">All releases</a> · <a href="https://github.com/ryanbarnal/dupesort">Source</a></span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { hydrateIcons, setupTheme } from './js/icons.js';
+    hydrateIcons();
+    setupTheme(document.querySelector('#theme'));
+
+    const ua = navigator.userAgent;
+    const os = /Windows/i.test(ua) ? 'Windows' : /Mac OS X|Macintosh/i.test(ua) && !/iPhone|iPad/i.test(ua) ? 'macOS'
+      : /Linux/i.test(ua) && !/Android/i.test(ua) ? 'Linux' : null;
+    const mine = os && document.querySelector(`.card[data-os="${os}"]`);
+    if (mine) mine.classList.add('mine');
+
+    try {
+      const res = await fetch('https://api.github.com/repos/ryanbarnal/dupesort/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
+      if (!res.ok) throw new Error(res.status);
+      const rel = await res.json();
+      const assets = rel.assets || [];
+      const find = { windows: (n) => /setup\.exe$/i.test(n), mac: (n) => /\.dmg$/i.test(n), linux: (n) => /linux.*\.tar\.gz$/i.test(n) };
+      const links = {};
+      for (const [key, test] of Object.entries(find)) {
+        const a = assets.find((x) => test(x.name));
+        if (!a) continue;
+        links[key] = a.browser_download_url;
+        const btn = document.querySelector(`[data-asset="${key}"]`);
+        btn.href = a.browser_download_url;
+        btn.title = `${a.name} · ${(a.size / 1048576).toFixed(0)} MB`;
+      }
+      const version = (rel.tag_name || '').replace(/^v/, '');
+      const date = rel.published_at ? new Date(rel.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+      document.querySelector('#version').innerHTML =
+        `Version ${version}${date ? ` · ${date}` : ''} · <a href="${rel.html_url}">What's new</a>`;
+      const key = { Windows: 'windows', macOS: 'mac', Linux: 'linux' }[os];
+      const main = document.querySelector('#main-dl');
+      if (key && links[key]) {
+        main.href = links[key];
+        main.lastChild.textContent = `Download for ${os}`;
+      } else main.lastChild.textContent = 'All downloads';
+    } catch {
+      document.querySelector('#version').innerHTML = '<a href="https://github.com/ryanbarnal/dupesort/releases/latest">See the latest release on GitHub</a>';
+    }
+  </script>
+</body>
+</html>

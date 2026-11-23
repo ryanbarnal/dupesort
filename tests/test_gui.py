@@ -128,3 +128,60 @@ def test_page_layout_folders_and_update_bar(app, monkeypatch):
     assert opened == ["https://example.com/rel"]
     w.update_bar.skip_btn.click()
     assert w.update_bar.isHidden() and w.settings.skipped_update == "9.0.0"
+
+
+def test_music_preview_player(app, tmp_path):
+    from conftest import make_wav
+
+    from dupesort.core.scanner import scan
+    from dupesort.gui.main_window import MainWindow
+
+    make_wav(tmp_path / "a.wav", seconds=1.0)
+    page = MainWindow().pages[0][2]
+    player = page.preview.player
+    assert player is not None and not player.isEnabled()
+    entry = scan([tmp_path], "music")[0]
+    page.preview.show_entry(entry)
+    assert player.isEnabled() and player.path == entry.path
+    player.play()  # no sound device here; it must not crash either way
+    for _ in range(20):
+        app.processEvents()
+    player.toggle()
+    page.preview.show_entry(None)
+    assert not player.isEnabled()
+    # Videos get a player with a picture area; photos and documents get none.
+    w = MainWindow()
+    assert w.pages[1][2].preview.player is None
+    video = w.pages[2][2].preview.player
+    assert video is not None and video.video is not None
+    assert w.pages[3][2].preview.player is None
+
+
+def test_document_previews(app, tmp_path):
+    from PIL import Image
+
+    from dupesort.core.scanner import FileEntry
+    from dupesort.gui.main_window import MainWindow
+    from dupesort.gui.widgets import document_preview
+
+    pdf = tmp_path / "letter.pdf"
+    Image.new("RGB", (600, 800), "white").save(pdf)
+    txt = tmp_path / "notes.txt"
+    txt.write_text("\n".join(f"line {i}" for i in range(100)), encoding="utf-8")
+    docx = tmp_path / "report.docx"
+    docx.write_bytes(b"PK\x03\x04 not really a docx")
+
+    kind, img = document_preview(pdf)
+    assert kind == "image" and img.width == 320
+    kind, text = document_preview(txt)
+    assert kind == "text" and text.splitlines()[0] == "line 0" and len(text.splitlines()) == 40
+    assert document_preview(docx) is None
+
+    preview = MainWindow().pages[3][2].preview
+    entry = lambda p: FileEntry(p, p.stat().st_size, p.stat().st_mtime, tmp_path)
+    preview.show_entry(entry(pdf))
+    assert not preview.image.pixmap().isNull() and preview.excerpt.isHidden()
+    preview.show_entry(entry(txt))
+    assert "line 39" in preview.excerpt.text() and not preview.excerpt.isHidden()
+    preview.show_entry(entry(docx))
+    assert "No preview" in preview.image.text()

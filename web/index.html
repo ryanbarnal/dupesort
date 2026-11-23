@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DupeSort · Find duplicate files in your browser</title>
+  <meta name="description" content="Find duplicate music, photos, videos and documents right in your browser. Live, acoustic and remix versions stay apart. Files never leave your device.">
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-512.png">
+  <link rel="stylesheet" href="css/style.css">
+  <script>try{var t=localStorage.getItem('dupesort-theme');if(t&&t!=='auto')document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./"><img src="logo.svg" alt="">DupeSort</a>
+    <nav class="nav">
+      <a href="./" aria-current="page">Web app</a>
+      <a href="download.html">Download</a>
+      <a class="hide-sm" href="https://github.com/ryanbarnal/dupesort">GitHub</a>
+    </nav>
+    <button class="icon-btn" id="theme" type="button"></button>
+  </header>
+
+  <main>
+    <div class="page-head">
+      <div class="grow">
+        <h1 id="title">Find duplicates</h1>
+        <p class="muted">Files are read on this device. Nothing is uploaded.</p>
+      </div>
+      <button class="btn primary lg" id="scan" type="button" disabled><i data-icon="scan"></i>Scan folders</button>
+    </div>
+
+    <div class="row" style="align-items:flex-start;margin-bottom:12px">
+      <span class="field-label" style="padding-top:4px">Folders</span>
+      <div class="chips" id="chips">
+        <button class="chip add" id="add" type="button"><i data-icon="folder-plus"></i>Add folder…</button>
+      </div>
+    </div>
+
+    <div class="segments" id="categories" role="group" aria-label="What to look for"></div>
+
+    <div class="options" id="options"></div>
+
+    <div class="notice" id="readonly" hidden>
+      <i data-icon="info"></i>
+      <p>This browser can read folders but not change them, so DupeSort shows what it finds and
+        lets you save a report. To <strong>move duplicates</strong> into a <code>_Duplicates</code> folder, use
+        Chrome or Edge on a computer, or the <a href="download.html">desktop app</a>.</p>
+    </div>
+
+    <div class="progress" id="progress" hidden>
+      <div class="bar"><i></i></div>
+      <span class="text"></span>
+      <button class="btn ghost" id="cancel" type="button"><i data-icon="close"></i>Cancel</button>
+    </div>
+
+    <section class="hero" id="hero" style="margin-top:0">
+      <img src="logo.svg" alt="">
+      <h2>Find duplicate music, photos, videos and documents</h2>
+      <p>Add the folders to check, then press <b>Scan folders</b>. DupeSort ticks the best copy in each
+        group, and in Chrome or Edge moves the rest into a <code>_Duplicates</code> folder. Nothing is
+        deleted, and you can undo.</p>
+      <div class="row">
+        <button class="btn primary lg" id="hero-add" type="button"><i data-icon="folder-plus"></i>Add a folder</button>
+        <a class="btn lg" href="download.html"><i data-icon="download"></i>Desktop app</a>
+      </div>
+      <div class="points">
+        <div class="point"><i data-icon="lock"></i><h3>Private</h3><p>Everything happens in your browser. Your files are never uploaded.</p></div>
+        <div class="point"><i data-icon="music"></i><h3>Smart about music</h3><p>Same song in another format is a duplicate. Live, acoustic and remix versions are not.</p></div>
+        <div class="point"><i data-icon="photos"></i><h3>Similar photos</h3><p>Finds resized and re-saved copies, and keeps the biggest one.</p></div>
+      </div>
+    </section>
+
+    <div id="results" hidden>
+      <div class="summary-line" id="summary"></div>
+      <div id="groups"></div>
+      <div class="more" id="more" hidden><button class="btn" type="button">Show more groups</button></div>
+    </div>
+  </main>
+
+  <div class="actionbar" id="actionbar" hidden>
+    <div class="inner">
+      <div class="player" id="player" hidden>
+        <button class="icon-btn" id="p-toggle" type="button"></button>
+        <span class="p-name" id="p-name"></span>
+        <input type="range" id="p-seek" min="0" max="1000" value="0" aria-label="Position">
+        <span class="p-time" id="p-time"></span>
+        <button class="icon-btn" id="p-close" type="button" aria-label="Stop"><i data-icon="close"></i></button>
+      </div>
+      <span class="grow" id="bar-text"></span>
+      <button class="btn" id="report" type="button"><i data-icon="report"></i>Save report</button>
+      <button class="btn primary" id="move" type="button"><i data-icon="move"></i>Move duplicates to _Duplicates</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden role="status"><span></span><button class="btn" type="button" id="undo"><i data-icon="undo"></i>Undo</button></div>
+
+  <footer>
+    <div class="inner">
+      <span>DupeSort by Ryan Ocbina Barnal</span>
+      <span><a href="download.html">Desktop app</a> · <a href="https://github.com/ryanbarnal/dupesort">Source</a></span>
+    </div>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

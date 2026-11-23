@@ -16,9 +16,9 @@ a = Analysis(
     ["run_dupesort.py"],
     binaries=helpers,
     datas=[("dupesort/gui/logo.png", "dupesort/gui"), ("dupesort/gui/guide.html", "dupesort/gui")],
-    hiddenimports=["pillow_heif", "pypdfium2"],
+    hiddenimports=["pillow_heif", "pypdfium2", "PySide6.QtMultimedia", "PySide6.QtMultimediaWidgets"],
     excludes=["tkinter", "PySide6.QtWebEngineCore", "PySide6.Qt3DCore", "PySide6.QtQuick",
-              "PySide6.QtQml", "PySide6.QtMultimedia", "PySide6.QtCharts"],
+              "PySide6.QtQml", "PySide6.QtCharts"],
 )
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="DupeSort",

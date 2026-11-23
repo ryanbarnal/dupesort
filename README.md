@@ -41,6 +41,16 @@ Each section has a convert tab. Originals are never changed; new files are saved
 - **Logo:** "Twin Rings": two thin white rings on a black tile (`packaging/logos/logo7.svg`). The earlier designs are still in `packaging/logos.py`. After changing it, run `python packaging/logos.py` and `python packaging/make_icons.py`.
 - **Help & Support** page: user guide, email support (version and OS are pre-filled), credits, and an optional **Donate** button. Set `DONATE_URL` in `dupesort/__init__.py` to show it.
 
+## Web app
+
+**https://dupesort.ryanbarnal.com** is a browser version for a quick check, plus a download page for the installers (it always lists the latest GitHub release). Files are read on the device and never uploaded.
+
+- It finds identical files of any kind, songs with the same artist and title (versions kept apart, the same rules as the desktop app) and similar photos (the same perceptual hash and tolerance as the desktop app).
+- Each file can be previewed in the page: songs play in a bar at the bottom, and videos, PDFs and text files open under their row.
+- In Chrome and Edge it moves duplicates into `_Duplicates`, with undo. Safari and Firefox can only read folders, so there it lists what it finds and saves a CSV report.
+- It lives in `web/` as plain HTML, CSS and JavaScript, with no build step. `.github/workflows/pages.yml` runs the tests (`node --test tests/web/*.test.mjs`) and publishes `web/` to GitHub Pages on every push to `main` that changes it.
+- To try it locally, run `python3 -m http.server -d web 8000` and open http://localhost:8000.
+
 ## Run from source
 
 ```bash
