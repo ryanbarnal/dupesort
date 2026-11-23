@@ -111,8 +111,9 @@ def test_page_layout_folders_and_update_bar(app, monkeypatch):
     page.folders.add_folder("/a/Music")
     page.folders.add_folder("/b/Music")
     page.folders.add_folder("/b/Music")  # already there
-    assert page.folders.folders() == ["/a/Music", "/b/Music"]
-    assert w.settings.folders["music"] == ["/a/Music", "/b/Music"]
+    expected = [os.path.normpath("/a/Music"), os.path.normpath("/b/Music")]  # \\ on Windows
+    assert page.folders.folders() == expected
+    assert w.settings.folders["music"] == expected
     # Scan is the page's main button only while Duplicates is showing.
     assert page.scan_btn.isDefault()
     page.switch.setCurrentIndex(2)
