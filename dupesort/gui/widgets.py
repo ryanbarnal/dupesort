@@ -7,10 +7,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtCore import QPoint, QRect, QSize, Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QImage, QPixmap
 from PySide6.QtWidgets import (
-    QFileDialog, QHBoxLayout, QHeaderView, QLabel, QListWidget, QPushButton,
+    QFileDialog, QHBoxLayout, QHeaderView, QLabel, QLayout, QPushButton,
     QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget,
 )
 
@@ -60,42 +60,124 @@ def reveal(path: Path) -> None:
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
 
 
+class FlowLayout(QLayout):
+    """Lays widgets out left to right and wraps them onto new lines, like text."""
+
+    def __init__(self, parent=None, spacing: int = 6) -> None:
+        super().__init__(parent)
+        self._items = []
+        self.setSpacing(spacing)
+        self.setContentsMargins(0, 0, 0, 0)
+
+    def addItem(self, item) -> None:
+        self._items.append(item)
+
+    def count(self) -> int:
+        return len(self._items)
+
+    def itemAt(self, i):
+        return self._items[i] if 0 <= i < len(self._items) else None
+
+    def takeAt(self, i):
+        return self._items.pop(i) if 0 <= i < len(self._items) else None
+
+    def expandingDirections(self):
+        return Qt.Orientations(0)
+
+    def hasHeightForWidth(self) -> bool:
+        return True
+
+    def heightForWidth(self, width: int) -> int:
+        return self._arrange(QRect(0, 0, width, 0), move=False)
+
+    def setGeometry(self, rect: QRect) -> None:
+        super().setGeometry(rect)
+        self._arrange(rect, move=True)
+
+    def sizeHint(self) -> QSize:
+        return self.minimumSize()
+
+    def minimumSize(self) -> QSize:
+        size = QSize()
+        for item in self._items:
+            size = size.expandedTo(item.minimumSize())
+        return size
+
+    def _arrange(self, rect: QRect, move: bool) -> int:
+        x, y, line = rect.x(), rect.y(), 0
+        gap = self.spacing()
+        for item in self._items:
+            hint = item.sizeHint()
+            if x + hint.width() > rect.right() + 1 and line > 0:
+                x, y, line = rect.x(), y + line + gap, 0
+            if move:
+                item.setGeometry(QRect(QPoint(x, y), hint))
+            x += hint.width() + gap
+            line = max(line, hint.height())
+        return y + line - rect.y()
+
+
 class FolderList(QWidget):
+    """The folders to scan, as chips. Each chip has a remove (×) button."""
+
     changed = Signal()
 
     def __init__(self, folders: list[str], parent=None) -> None:
         super().__init__(parent)
-        self.list = QListWidget()
-        self.list.addItems(folders)
-        self.list.setMaximumHeight(90)
-        add, remove = QPushButton("Add folder…"), QPushButton("Remove")
-        icons.attach(add, "folder-plus")
-        icons.attach(remove, "minus")
-        add.setStyleSheet("text-align: left")
-        remove.setStyleSheet("text-align: left")
-        add.clicked.connect(self._add)
-        remove.clicked.connect(self._remove)
-        buttons = QVBoxLayout()
-        buttons.addWidget(add)
-        buttons.addWidget(remove)
-        buttons.addStretch()
-        lay = QHBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.addWidget(self.list, 1)
-        lay.addLayout(buttons)
+        self._folders: list[str] = []
+        self.flow = FlowLayout(self)
+        self.add_btn = icons.attach(QPushButton("Add folder…"), "folder-plus")
+        self.add_btn.setObjectName("chipAdd")
+        self.add_btn.clicked.connect(self._add)
+        self.flow.addWidget(self.add_btn)
+        for f in folders:
+            self.add_folder(f, notify=False)
 
     def folders(self) -> list[str]:
-        return [self.list.item(i).text() for i in range(self.list.count())]
+        return list(self._folders)
+
+    def add_folder(self, path: str, notify: bool = True) -> None:
+        path = os.path.normpath(path)
+        if path in self._folders:
+            return
+        self._folders.append(path)
+        chip = QPushButton()
+        chip.setObjectName("chip")
+        chip.setProperty("folder", path)
+        chip.setToolTip(f"{path}\nClick to remove")
+        icons.attach(chip, "close", 12)
+        chip.setLayoutDirection(Qt.RightToLeft)  # × after the name
+        chip.clicked.connect(lambda _=False, p=path, c=chip: self._remove(p, c))
+        # Keep "Add folder" last.
+        self.flow.takeAt(self.flow.count() - 1)
+        self.flow.addWidget(chip)
+        self.flow.addWidget(self.add_btn)
+        self._relabel()
+        if notify:
+            self.changed.emit()
+
+    def _relabel(self) -> None:
+        """Show each folder's name, plus its parent where two names are the same."""
+        names = [Path(f).name or f for f in self._folders]
+        for i in range(self.flow.count()):
+            chip = self.flow.itemAt(i).widget()
+            path = chip.property("folder") if chip else None
+            if path:
+                name = Path(path).name or path
+                if names.count(name) > 1 and Path(path).parent.name:
+                    name = f"{Path(path).parent.name} › {name}"
+                chip.setText(name)
 
     def _add(self) -> None:
         d = QFileDialog.getExistingDirectory(self, "Choose a folder to scan")
-        if d and d not in self.folders():
-            self.list.addItem(os.path.normpath(d))
-            self.changed.emit()
+        if d:
+            self.add_folder(d)
 
-    def _remove(self) -> None:
-        for item in self.list.selectedItems():
-            self.list.takeItem(self.list.row(item))
+    def _remove(self, path: str, chip: QPushButton) -> None:
+        self._folders.remove(path)
+        self.flow.removeWidget(chip)
+        chip.deleteLater()
+        self._relabel()
         self.changed.emit()
 
 

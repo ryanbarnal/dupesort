@@ -20,6 +20,8 @@ The full user guide is in the app (**Help → DupeSort User Guide**) and at [`du
 - **Move duplicates** relocates the unticked copies to `<scanned folder>/_Duplicates/<original sub-folder>/`.
 - **Music lookups:** matches at or above the confidence threshold (default 90%) are ticked automatically. Orange rows need review: pick another online match from the dropdown, or type the details yourself.
 - **History:** every move, rename and tag change is logged and can be undone.
+- **Versions stay apart:** live, acoustic, unplugged, remix, demo and other versions of a song are not treated as duplicates of the studio take. The version is read from the title, file name, album, genre and folder name (on by default; *Keep versions apart* on the Music page).
+- **Automatic updates:** DupeSort checks GitHub releases at start-up and every 6 hours. Windows installs the update and restarts; macOS and Linux download it and show it. *Help → Check for updates…* checks on demand.
 
 ## Converters
 

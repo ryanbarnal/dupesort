@@ -155,17 +155,30 @@ def stylesheet(c: dict[str, str]) -> str:
                             color: {c['muted']}; }}
         QLabel#notice {{ background: {c['base']}; border: 1px solid {c['border']};
                          padding: 8px 10px; border-radius: 6px; color: {c['muted']}; }}
-        QLabel#heading {{ font-size: 20px; font-weight: 600; padding: 2px 0 4px 0; }}
+        QLabel#heading {{ font-size: 22px; font-weight: 600; padding: 0; }}
         QLabel#muted {{ color: {c['muted']}; }}
+        QLabel#fieldLabel {{ color: {c['muted']}; min-width: 52px; }}
 
-        /* Tabs: plain text with a thin underline on the current one. */
-        QTabWidget::pane {{ border: 0; border-top: 1px solid {c['border']}; top: -1px; }}
-        QTabBar {{ qproperty-drawBase: 0; }}
-        QTabBar::tab {{ background: transparent; color: {c['muted']}; padding: 7px 2px;
-                        margin-right: 18px; border: 0; border-bottom: 2px solid transparent; }}
-        QTabBar::tab:hover {{ color: {c['text']}; }}
-        QTabBar::tab:selected {{ color: {c['text']}; border-bottom: 2px solid {c['accent']};
-                                 font-weight: 600; }}
+        QFrame#updateBar {{ background: {c['base']}; border-bottom: 1px solid {c['border']}; }}
+
+        /* Folder chips */
+        QPushButton#chip {{ background: {c['soft']}; border: 1px solid {c['soft']};
+                            border-radius: 13px; padding: 3px 8px 3px 12px; min-height: 18px; }}
+        QPushButton#chip:hover {{ border-color: {c['faint']}; }}
+        QPushButton#chipAdd {{ background: transparent; border: 1px dashed {c['faint']};
+                               border-radius: 13px; padding: 3px 12px; min-height: 18px;
+                               color: {c['muted']}; }}
+        QPushButton#chipAdd:hover {{ color: {c['text']}; border-color: {c['muted']}; }}
+
+        /* Page sections: a compact segmented switch */
+        QTabWidget#sections::pane {{ border: 0; top: 0; }}
+        QTabBar#segments {{ background: {c['soft']}; border-radius: 8px; }}
+        QTabBar#segments::tab {{ margin: 3px 0 3px 3px; padding: 5px 14px; border: 0;
+                                 border-radius: 6px; color: {c['muted']}; }}
+        QTabBar#segments::tab:last {{ margin-right: 3px; }}
+        QTabBar#segments::tab:selected {{ background: {c['base']}; color: {c['text']};
+                                          border: 0; }}
+        QTabBar#segments::tab:hover:!selected {{ color: {c['text']}; }}
 
         /* Lists, trees and tables */
         QAbstractItemView {{ background: {c['base']}; alternate-background-color: {c['alt']};

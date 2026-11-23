@@ -51,6 +51,8 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; In-app updates run this installer with /SILENT: start the new version afterwards.
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: WizardSilent
 
 ; Settings and undo history live in %LOCALAPPDATA%\DupeSort and are kept on
 ; uninstall, so reinstalling keeps the user's folders, API keys and history.
