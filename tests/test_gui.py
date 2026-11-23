@@ -153,7 +153,13 @@ def test_music_preview_player(app, tmp_path):
     w = MainWindow()
     assert w.pages[1][2].preview.player is None
     video = w.pages[2][2].preview.player
-    assert video is not None and video.video is not None
+    try:  # some Linux setups lack the system libraries Qt's video widget needs
+        import PySide6.QtMultimediaWidgets  # noqa: F401
+        has_video = True
+    except ImportError:
+        has_video = False
+    # Without them the player still works for sound; it just shows no picture.
+    assert video is not None and (video.video is not None) == has_video
     assert w.pages[3][2].preview.player is None
 
 
