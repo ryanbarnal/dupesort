@@ -1,6 +1,6 @@
 """DupeSort - find, relocate and organize duplicate music, photos, videos and documents."""
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 APP_NAME = "DupeSort"
 AUTHOR = "Ryan Ocbina Barnal"
 SUPPORT_EMAIL = "ryanbarnal@gmail.com"
