@@ -233,6 +233,8 @@ async function scan() {
 // --- results ----------------------------------------------------------------------------------
 
 function clearResults() {
+  stopAudio();
+  closePane();
   state.files = [];
   state.groups = [];
   $('#results').hidden = true;
@@ -294,8 +296,10 @@ function renderResults(partial = false) {
       row.innerHTML = `<label><input type="checkbox" ${kept ? 'checked' : ''} aria-label="Keep ${esc(f.name)}">
         <img class="thumb${thumb ? '' : ' none'}" ${thumb ? 'data-lazy' : ''} alt="">
         <span class="grow-col"><span class="name">${esc(f.name)}</span><span class="tag ${kept ? 'keep' : 'dupe'}">${kept ? 'Keep' : 'Duplicate'}</span><br><span class="where">${esc(f.folder)}</span></span>
-        <span class="meta">${esc(details(f))}</span></label>`;
+        <span class="meta">${esc(details(f))}</span></label>${actionButton(f)}`;
       if (thumb) row.querySelector('img')._file = f.file;
+      row.querySelector('.play')?.addEventListener('click', () => playFile(f));
+      row.querySelector('.peek')?.addEventListener('click', () => togglePane(f, row));
       row.querySelector('input').addEventListener('change', (e) => {
         if (e.target.checked) g.keep.add(i);
         else if (g.keep.size > 1) g.keep.delete(i);
@@ -303,10 +307,15 @@ function renderResults(partial = false) {
         renderResults();
       });
       card.appendChild(row);
+      if (pane.file === f && pane.el) {
+        row.after(pane.el); // keep an open preview open when the list redraws
+        row.querySelector('.peek')?.classList.add('on');
+      }
     });
     list.appendChild(card);
   });
   lazyThumbs(list);
+  renderPlayer();
   $('#more').hidden = groups.length <= state.shown;
   $('#actionbar').hidden = !groups.length;
   document.body.classList.toggle('has-actionbar', groups.length > 0);
@@ -322,6 +331,137 @@ function updateBar() {
   $('#move').disabled = !dupes.length || !!state.task || !writable;
 }
 
+// --- previews ---------------------------------------------------------------------------------
+
+const AUDIO = new Set(CATEGORIES.music.exts);
+const VIDEO = new Set(['mp4', 'm4v', 'webm', 'mov', 'mkv', 'ogv']); // ones browsers may play
+const TEXT = new Set(['txt', 'md', 'csv', 'log', 'json', 'xml', 'html', 'htm']);
+
+/** What preview a file can have here: 'audio', 'video', 'pdf', 'text' or null. */
+function previewKind(name) {
+  const e = name.slice(name.lastIndexOf('.') + 1).toLowerCase();
+  if (AUDIO.has(e)) return 'audio';
+  if (VIDEO.has(e)) return 'video';
+  if (e === 'pdf') return 'pdf';
+  if (TEXT.has(e)) return 'text';
+  return null;
+}
+
+function actionButton(f) {
+  const kind = previewKind(f.name);
+  if (kind === 'audio')
+    return `<button class="icon-btn play" type="button" data-path="${esc(f.path)}" aria-label="Play ${esc(f.name)}">${icon('play')}</button>`;
+  if (kind)
+    return `<button class="icon-btn peek" type="button" data-path="${esc(f.path)}" aria-label="${kind === 'video' ? 'Play' : 'Preview'} ${esc(f.name)}" title="${kind === 'video' ? 'Play here' : 'Preview'}">${icon(kind === 'video' ? 'play' : 'eye')}</button>`;
+  return '';
+}
+
+// One preview open at a time, shown under its row: a video, a PDF or the start of a text file.
+const pane = { file: null, url: null, el: null };
+
+function closePane() {
+  if (pane.el) pane.el.remove();
+  if (pane.url) URL.revokeObjectURL(pane.url);
+  document.querySelectorAll('button.peek.on').forEach((b) => b.classList.remove('on'));
+  pane.file = pane.url = pane.el = null;
+}
+
+async function togglePane(f, row) {
+  const same = pane.file === f;
+  closePane();
+  if (same) return;
+  stopAudio();
+  const kind = previewKind(f.name);
+  const el = document.createElement('div');
+  el.className = 'pane';
+  pane.file = f;
+  pane.el = el;
+  row.querySelector('.peek')?.classList.add('on');
+  if (kind === 'text') {
+    const text = await f.file.slice(0, 8000).text();
+    el.innerHTML = `<pre>${esc(text.split(/\r?\n/).slice(0, 60).join('\n'))}</pre>`;
+  } else {
+    pane.url = URL.createObjectURL(kind === 'pdf' ? new Blob([f.file], { type: 'application/pdf' }) : f.file);
+    if (kind === 'video') {
+      el.innerHTML = '<video controls autoplay playsinline></video>';
+      const v = el.querySelector('video');
+      v.src = pane.url;
+      v.addEventListener('error', () => {
+        el.innerHTML = `<p class="muted">This browser can't play ${esc(f.name)}. The <a href="download.html">desktop app</a> plays more formats.</p>`;
+      });
+    } else {
+      el.innerHTML = `<iframe title="${esc(f.name)}" src="${pane.url}#view=FitH"></iframe>`;
+    }
+  }
+  row.after(el);
+}
+
+// --- listening to songs ----------------------------------------------------------------------
+
+const audio = new Audio();
+audio.preload = 'metadata';
+const player = { file: null, url: null };
+
+/** Play `f` (or pause/resume it if it's the one playing). Click through a group to compare copies. */
+function playFile(f) {
+  if (pane.file && previewKind(pane.file.name) === 'video') closePane(); // one sound at a time
+  if (player.file === f) {
+    if (audio.paused) audio.play();
+    else audio.pause();
+    return;
+  }
+  stopAudio();
+  player.file = f;
+  player.url = URL.createObjectURL(f.file);
+  audio.src = player.url;
+  audio.play().catch((e) => {
+    if (e.name === 'AbortError') return;
+    showToast(`This browser can't play ${f.name}.`, false);
+    stopAudio();
+  });
+  renderPlayer();
+}
+
+function stopAudio() {
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.load();
+  if (player.url) URL.revokeObjectURL(player.url);
+  player.file = player.url = null;
+  renderPlayer();
+}
+
+function renderPlayer() {
+  const box = $('#player');
+  const f = player.file;
+  box.hidden = !f;
+  const playing = f && !audio.paused;
+  document.querySelectorAll('button.play').forEach((b) => {
+    const mine = f && b.dataset.path === f.path;
+    b.innerHTML = icon(mine && playing ? 'pause' : 'play');
+    b.classList.toggle('on', !!mine);
+    b.setAttribute('aria-label', `${mine && playing ? 'Pause' : 'Play'} ${b.dataset.path.split('/').pop()}`);
+  });
+  if (!f) return;
+  $('#p-toggle').innerHTML = icon(playing ? 'pause' : 'play');
+  $('#p-toggle').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  $('#p-name').textContent = f.name;
+  $('#p-name').title = f.path;
+  updateTime();
+}
+
+function updateTime() {
+  const d = audio.duration || player.file?.duration || 0;
+  const t = audio.currentTime || 0;
+  const seek = $('#p-seek');
+  if (!seek.matches(':active')) seek.value = d ? Math.round((t / d) * 1000) : 0;
+  $('#p-time').textContent = d ? `${duration(t) || '0:00'} / ${duration(d)}` : duration(t) || '0:00';
+}
+
+for (const ev of ['play', 'pause', 'ended']) audio.addEventListener(ev, renderPlayer);
+audio.addEventListener('timeupdate', updateTime);
+audio.addEventListener('loadedmetadata', updateTime);
+
 // --- moving -----------------------------------------------------------------------------------
 
 async function moveDuplicates() {
@@ -334,6 +474,8 @@ async function moveDuplicates() {
       return;
     }
   }
+  stopAudio(); // the file being played or shown may be one that moves
+  closePane();
   const task = startTask();
   const records = [], errors = [];
   for (const [n, f] of moves.entries()) {
@@ -410,6 +552,11 @@ $('#cancel').addEventListener('click', () => state.task && (state.task.cancel = 
 $('#move').addEventListener('click', moveDuplicates);
 $('#report').addEventListener('click', saveReport);
 $('#undo').addEventListener('click', undo);
+$('#p-toggle').addEventListener('click', () => player.file && playFile(player.file));
+$('#p-close').addEventListener('click', stopAudio);
+$('#p-seek').addEventListener('input', (e) => {
+  if (audio.duration) audio.currentTime = (e.target.value / 1000) * audio.duration;
+});
 $('#more button').addEventListener('click', () => {
   state.shown += PAGE;
   renderResults();
@@ -418,6 +565,9 @@ $('#more button').addEventListener('click', () => {
 // For automated tests: hand the app a folder (e.g. from navigator.storage.getDirectory()).
 window.dupesort = {
   state,
+  audio,
+  playFile,
+  pane,
   scan,
   addFolderHandle(handle) {
     state.roots.push({ name: handle.name || 'Folder', handle });

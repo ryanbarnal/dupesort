@@ -81,6 +81,13 @@
 
   <div class="actionbar" id="actionbar" hidden>
     <div class="inner">
+      <div class="player" id="player" hidden>
+        <button class="icon-btn" id="p-toggle" type="button"></button>
+        <span class="p-name" id="p-name"></span>
+        <input type="range" id="p-seek" min="0" max="1000" value="0" aria-label="Position">
+        <span class="p-time" id="p-time"></span>
+        <button class="icon-btn" id="p-close" type="button" aria-label="Stop"><i data-icon="close"></i></button>
+      </div>
       <span class="grow" id="bar-text"></span>
       <button class="btn" id="report" type="button"><i data-icon="report"></i>Save report</button>
       <button class="btn primary" id="move" type="button"><i data-icon="move"></i>Move duplicates to _Duplicates</button>

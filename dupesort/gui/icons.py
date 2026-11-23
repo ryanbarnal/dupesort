@@ -222,6 +222,15 @@ def _stop(p):
     p.drawRoundedRect(QRectF(9, 9, 6, 6), 1, 1)
 
 
+def _play(p):
+    _poly(p, (7, 4.5), (19, 12), (7, 19.5), close=True)
+
+
+def _pause(p):
+    p.drawRoundedRect(QRectF(6, 4.5, 4, 15), 1, 1)
+    p.drawRoundedRect(QRectF(14, 4.5, 4, 15), 1, 1)
+
+
 def _tag(p):
     _poly(p, (3, 4.5), (3, 11), (13, 21), (21, 13), (11, 3), (4.5, 3), (3, 4.5))
     p.drawEllipse(QRectF(6.5, 6.5, 3, 3))
@@ -234,7 +243,7 @@ _ICONS = {
     "close": _close, "trash": _trash, "eye": _eye, "check": _check, "globe": _globe,
     "pencil": _pencil, "undo": _undo, "open": _external, "mail": _mail, "book": _book,
     "heart": _heart, "convert": _convert, "sparkle": _sparkle, "more": _more, "stop": _stop,
-    "tag": _tag,
+    "tag": _tag, "play": _play, "pause": _pause,
 }
 KINDS = tuple(_ICONS)
 

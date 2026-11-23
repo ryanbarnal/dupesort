@@ -253,14 +253,61 @@ class DuplicateTree(QTreeWidget):
         self.selected_file.emit(self.groups[gi].files[fi] if fi >= 0 else None)
 
 
+TEXT_PREVIEW = {".txt", ".md", ".csv", ".log", ".json", ".xml", ".html", ".htm", ".rtf"}
+
+
+def document_preview(path: Path, width: int = 320):
+    """("image", PIL image) for the first page of a PDF, ("text", str) for the start of a text
+    file, or None for formats that need their own app (Word, Excel…)."""
+    ext = path.suffix.lower()
+    if ext == ".pdf":
+        try:
+            import pypdfium2 as pdfium
+
+            doc = pdfium.PdfDocument(str(path))
+            try:
+                page = doc[0]
+                scale = width / max(1.0, page.get_width())
+                return "image", page.render(scale=scale).to_pil().convert("RGB")
+            finally:
+                doc.close()
+        except Exception:
+            return None
+    if ext in TEXT_PREVIEW:
+        try:
+            with open(path, "rb") as fh:
+                raw = fh.read(4000)
+            text = raw.decode("utf-8", errors="replace")
+            return "text", "\n".join(text.splitlines()[:40])
+        except OSError:
+            return None
+    return None
+
+
 class Preview(QWidget):
-    def __init__(self, show_images: bool, parent=None) -> None:
+    """Details of the selected file, with a preview where one makes sense: a photo, the first
+    page of a PDF or lines of a text file, or a player for music and videos."""
+
+    HINTS = {"music": "Select a song to see its details and play it.",
+             "videos": "Select a video to see its details and play it."}
+
+    def __init__(self, kind: str = "", parent=None) -> None:
         super().__init__(parent)
-        self.show_images = show_images
+        self.kind = kind
+        self.show_images = kind in ("photos", "documents")
+        self.player = None
+        if kind in ("music", "videos"):
+            from .player import MiniPlayer
+
+            self.player = MiniPlayer(video=kind == "videos")
         self.entry: Optional[FileEntry] = None
         self.image = QLabel(alignment=Qt.AlignCenter)
-        self.image.setMinimumSize(240, 200 if show_images else 0)
-        self.image.setVisible(show_images)
+        self.image.setMinimumSize(240, 200 if self.show_images else 0)
+        self.image.setVisible(self.show_images)
+        self.excerpt = QLabel(wordWrap=True, textInteractionFlags=Qt.TextSelectableByMouse,
+                              objectName="excerpt")
+        self.excerpt.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self.excerpt.setVisible(False)
         self.text = QLabel(wordWrap=True, textInteractionFlags=Qt.TextSelectableByMouse)
         self.text.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         open_btn, show_btn = QPushButton("Open"), QPushButton("Show in folder")
@@ -273,15 +320,33 @@ class Preview(QWidget):
         row.addWidget(open_btn)
         row.addWidget(show_btn)
         lay = QVBoxLayout(self)
+        if self.player and self.player.video:
+            lay.addWidget(self.player.video)
         lay.addWidget(self.image)
+        lay.addWidget(self.excerpt)
         lay.addWidget(self.text, 1)
+        if self.player:
+            lay.addWidget(self.player)
         lay.addLayout(row)
         self.setMinimumWidth(260)
 
+    def hideEvent(self, event) -> None:
+        if self.player:  # stop playing when you switch section or page
+            self.player.stop()
+        super().hideEvent(event)
+
+    def _set_image(self, img) -> None:
+        data = img.tobytes("raw", "RGB")
+        qimg = QImage(data, img.width, img.height, img.width * 3, QImage.Format_RGB888)
+        self.image.setPixmap(QPixmap.fromImage(qimg.copy()))
+
     def show_entry(self, entry: Optional[FileEntry]) -> None:
         self.entry = entry
+        if self.player:
+            self.player.load(entry.path if entry else None)
+        self.excerpt.setVisible(False)
         if entry is None:
-            self.text.setText("Select a file to preview it.")
+            self.text.setText(self.HINTS.get(self.kind, "Select a file to preview it."))
             self.image.clear()
             return
         lines = [f"<b>{entry.path.name}</b>", str(entry.path.parent), human_size(entry.size)]
@@ -295,13 +360,23 @@ class Preview(QWidget):
         if tags.get("lyrics"):
             lines.append("Lyrics: embedded")
         self.text.setText("<br>".join(lines))
-        if self.show_images:
+        if self.kind == "photos":
             from ..photos import thumbnail
 
             img = thumbnail(entry.path)
             if img is None:
                 self.image.setText("(no preview)")
             else:
-                data = img.tobytes("raw", "RGB")
-                qimg = QImage(data, img.width, img.height, img.width * 3, QImage.Format_RGB888)
-                self.image.setPixmap(QPixmap.fromImage(qimg.copy()))
+                self._set_image(img)
+        elif self.kind == "documents":
+            found = document_preview(entry.path)
+            self.image.setVisible(bool(found and found[0] == "image"))
+            self.image.clear()
+            if found and found[0] == "image":
+                self._set_image(found[1])
+            elif found:
+                self.excerpt.setText(found[1])
+                self.excerpt.setVisible(True)
+            else:
+                self.image.setVisible(True)
+                self.image.setText("No preview for this kind of file.\nUse Open to view it.")

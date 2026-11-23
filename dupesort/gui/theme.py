@@ -157,6 +157,9 @@ def stylesheet(c: dict[str, str]) -> str:
                          padding: 8px 10px; border-radius: 6px; color: {c['muted']}; }}
         QLabel#heading {{ font-size: 22px; font-weight: 600; padding: 0; }}
         QLabel#muted {{ color: {c['muted']}; }}
+        QLabel#excerpt {{ background: {c['base']}; border: 1px solid {c['border']};
+                          border-radius: 6px; padding: 8px; color: {c['muted']};
+                          font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; }}
         QLabel#fieldLabel {{ color: {c['muted']}; min-width: 52px; }}
 
         QFrame#updateBar {{ background: {c['base']}; border-bottom: 1px solid {c['border']}; }}

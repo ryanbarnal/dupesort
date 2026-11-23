@@ -82,9 +82,12 @@ class CategoryPage(QWidget):
         self.options.addStretch()
 
         self.tree = DuplicateTree()
-        self.preview = Preview(show_images=category == "photos")
+        self.preview = Preview(category)
         self.preview.show_entry(None)
         self.tree.selected_file.connect(self.preview.show_entry)
+        if self.preview.player:  # double-click a song or video to play it
+            self.tree.itemDoubleClicked.connect(
+                lambda item, _col: item.parent() is not None and self.preview.player.play())
         self.tree.keep_changed.connect(self._update_summary)
         split = QSplitter()
         split.addWidget(self.tree)
@@ -280,7 +283,8 @@ class CategoryPage(QWidget):
             self.summary.setText("No duplicates found." if self.files else
                                  "Add folders and press Scan folders.")
         else:
-            self.summary.setText(f"{len(self.groups)} groups · {dupes} duplicates · "
+            g, d = len(self.groups), dupes
+            self.summary.setText(f"{g} group{'s' * (g != 1)} · {d} duplicate{'s' * (d != 1)} · "
                                  f"{human_size(wasted)} can be freed. Ticked files are kept.")
         self.move_btn.setEnabled(bool(dupes) and self.task is None)
 
