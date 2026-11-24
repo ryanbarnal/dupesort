@@ -19,6 +19,7 @@ from ..music import fingerprint
 from ..music import organizer as music
 from ..settings import Settings
 from . import icons
+from .player import release_all
 from .widgets import DuplicateTree, FolderList, Preview, human_size
 from .worker import Task
 
@@ -196,6 +197,7 @@ class CategoryPage(QWidget):
                  done: Callable[[object], None], on_item: Optional[Callable] = None) -> None:
         if self.task is not None:
             return
+        release_all()  # a song or video being previewed would block changes on Windows
         for w in self._busy_widgets:
             w.setEnabled(False)
         self.status.setText(label)

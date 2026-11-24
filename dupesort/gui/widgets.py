@@ -331,8 +331,8 @@ class Preview(QWidget):
         self.setMinimumWidth(260)
 
     def hideEvent(self, event) -> None:
-        if self.player:  # stop playing when you switch section or page
-            self.player.stop()
+        if self.player:  # stop and close the file when you switch section or page
+            self.player.release()
         super().hideEvent(event)
 
     def _set_image(self, img) -> None:
