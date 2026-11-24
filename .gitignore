@@ -6,3 +6,7 @@ dist/
 bin/
 .pytest_cache/
 .DS_Store
+
+# Never commit the license signing key
+.dupesort-signing-key
+*signing-key*

@@ -30,6 +30,11 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon-x11-0 libxcb-cursor0
       - name: Test
         run: python -m pytest -q tests
+      - name: Check that license keys can be activated
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          python -c "from dupesort import licensing; assert licensing.PUBLIC_KEY, 'Run: python packaging/license_tool.py init, then commit dupesort/licensing.py'"
 
       - name: Windows installer
         if: runner.os == 'Windows'

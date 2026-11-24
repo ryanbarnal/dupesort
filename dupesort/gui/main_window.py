@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QPushButton, QStackedWidget, QTextBrowser, QVBoxLayout, QWidget,
 )
 
-from .. import APP_NAME, AUTHOR, __version__, videos
+from .. import APP_NAME, AUTHOR, __version__, licensing, videos
 from ..music import fingerprint
 from ..core import state
 from ..settings import Settings
@@ -87,6 +87,11 @@ class MainWindow(QMainWindow):
         sl.addLayout(brand)
         sl.addSpacing(18)
         sl.addWidget(self.nav, 1)
+        # Trial / license status; opens the activation window.
+        self.trial_btn = QPushButton(objectName="trial")
+        self.trial_btn.setCursor(Qt.PointingHandCursor)
+        self.trial_btn.clicked.connect(self.open_activation)
+        sl.addWidget(self.trial_btn)
         sl.addWidget(QLabel(f"by {AUTHOR}", objectName="credit", wordWrap=True))
 
         self.stack = QStackedWidget()
@@ -133,6 +138,7 @@ class MainWindow(QMainWindow):
         self._build_menus()
         self._refresh_icons()
         self.statusBar().showMessage("Ready")
+        self.refresh_license()
         self._restore_session()
 
         # Look for a new version shortly after start-up, then every 6 hours.
@@ -168,6 +174,24 @@ class MainWindow(QMainWindow):
                                "size": [size.width(), size.height()]})
         except OSError:
             pass
+
+    # --- trial and license --------------------------------------------------------
+    def refresh_license(self) -> None:
+        st = licensing.status()
+        self.trial_btn.setVisible(st.licensed is None)
+        if st.licensed is None:
+            self.trial_btn.setText(f"{st.summary()} · Activate" if st.days_left <= 0 else
+                                   st.summary())
+            self.trial_btn.setProperty("ended", st.days_left <= 0)
+            self.trial_btn.style().unpolish(self.trial_btn)
+            self.trial_btn.style().polish(self.trial_btn)
+            self.trial_btn.setToolTip("Enter a license key, or see what the trial includes")
+
+    def open_activation(self) -> None:
+        from .license_dialog import ActivateDialog
+
+        ActivateDialog(parent=self).exec()
+        self.refresh_license()
 
     def _auto_check_updates(self) -> None:
         if os.environ.get("DUPESORT_NO_UPDATE_CHECK"):  # set by the tests
@@ -235,6 +259,8 @@ class MainWindow(QMainWindow):
         guide = QAction(f"{APP_NAME} User Guide", self)
         guide.setShortcut(QKeySequence.HelpContents)
         guide.triggered.connect(self.open_guide)
+        activate = QAction(f"Activate {APP_NAME}…", self)
+        activate.triggered.connect(self.open_activation)
         check = QAction("Check for updates…", self)
         check.setMenuRole(QAction.ApplicationSpecificRole)
         check.triggered.connect(lambda: self.update_bar.check(manual=True))
@@ -243,7 +269,7 @@ class MainWindow(QMainWindow):
         about = QAction(f"About {APP_NAME}", self)
         about.setMenuRole(QAction.AboutRole)
         about.triggered.connect(self.about)
-        for a in (guide, support, check):
+        for a in (guide, support, check, activate):
             help_menu.addAction(a)
         help_menu.addSeparator()
         help_menu.addAction(about)
@@ -298,7 +324,7 @@ class MainWindow(QMainWindow):
         box.setWindowTitle(f"About {APP_NAME}")
         box.setIconPixmap(logo_pixmap(96))
         box.setText(f"<h3>{APP_NAME} {__version__}</h3>"
-                    f"<p>Created by <b>{AUTHOR}</b>.</p>")
+                    f"<p>Created by <b>{AUTHOR}</b>.</p><p>{licensing.status().summary()}.</p>")
         box.setInformativeText(
             "Finds duplicate music, photos, videos and documents, organizes and converts "
             "them. Every change can be undone.<br><br>"
