@@ -152,12 +152,25 @@ class TagTab(QWidget):
 
         self.page.run_task("Looking up songs online…", job, self._lookup_done, self._add_proposal)
 
+    def export_state(self) -> list:
+        return list(self.proposals)
+
+    def restore_state(self, proposals: list) -> None:
+        self.proposals = list(proposals)
+        self.table.setRowCount(0)
+        self.table.setRowCount(len(self.proposals))
+        for row in range(len(self.proposals)):
+            self._fill_row(row)
+        if self.proposals:
+            self._update_summary()
+
     def _add_proposal(self, prop: Proposal) -> None:
         self.proposals.append(prop)
         row = self.table.rowCount()
         self.table.insertRow(row)
         self._fill_row(row)
         self._update_summary()
+        self.page.schedule_save()
 
     def _lookup_done(self, _total) -> None:
         self._update_summary()
@@ -197,6 +210,7 @@ class TagTab(QWidget):
             return
         self.proposals[item.row()].apply = item.checkState() == Qt.Checked
         self._update_summary()
+        self.page.schedule_save()
 
     def _update_summary(self) -> None:
         ticked = sum(p.apply and not p.done for p in self.proposals)
@@ -254,6 +268,7 @@ class TagTab(QWidget):
         p.error = ""
         self._fill_row(row)
         self._update_summary()
+        self.page.schedule_save()
 
     # --- applying ------------------------------------------------------------
     def _entry_for(self, path):
@@ -288,6 +303,7 @@ class TagTab(QWidget):
             for row in range(len(self.proposals)):
                 self._fill_row(row)
             self._update_summary()
+            self.page.schedule_save()
             self.page.tree.set_groups(self.page.groups)
             self.page.history_changed.emit()
             self.page.status.setText(f"Updated {sum(p.done for p in todo)} songs.")

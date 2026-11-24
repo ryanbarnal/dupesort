@@ -250,3 +250,52 @@ def test_player_lets_go_of_the_file(app, tmp_path):
         app.processEvents()
     assert page.task is None
     window.close()
+
+
+def test_reopens_where_you_left_off(app, tmp_path, monkeypatch):
+    from conftest import make_wav
+    from PySide6.QtWidgets import QMessageBox
+
+    from dupesort.core.duplicates import DuplicateGroup
+    from dupesort.core.scanner import scan
+    from dupesort.gui.main_window import MainWindow
+    from dupesort.music.lookup import Match, Proposal
+
+    for d in ("A", "B"):
+        make_wav(tmp_path / "lib" / d / "song.wav")
+    files = scan([tmp_path / "lib"], "music")
+
+    w = MainWindow()
+    page = w.pages[0][2]
+    page.files = files
+    page.groups = [DuplicateGroup(list(files), "Identical file", {1})]
+    page.tree.set_groups(page.groups)
+    page.tag_tab.restore_state([Proposal(files[0].path, {"title": "x"}, 1.0,
+                                         [Match(70, {"title": "Song"})], apply=True)])
+    convert = page.tabs.widget(2)
+    convert.files.add([files[0].path])
+    page.tabs.setCurrentIndex(1)
+    w.nav.setCurrentRow(0)
+    # A lookup is still running when the window closes.
+    page.task = type("FakeTask", (), {"cancel": lambda self: None})()
+    page._task_label = "Looking up songs online…"
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)  # "Stop it and quit?"
+    assert w.close()
+    page.task = None
+
+    w2 = MainWindow()
+    p2 = w2.pages[0][2]
+    assert w2.nav.currentRow() == 0 and p2.tabs.currentIndex() == 1
+    assert len(p2.groups) == 1 and p2.groups[0].keep == {1}
+    assert p2.tree.topLevelItemCount() == 1
+    assert len(p2.tag_tab.proposals) == 1 and p2.tag_tab.table.rowCount() == 1
+    assert p2.tag_tab.proposals[0].apply
+    assert p2.tabs.widget(2).files.paths() == [files[0].path]
+    assert "closed during" in p2.status.text() and "Looking up songs online" in p2.status.text()
+    # Other pages had nothing to restore.
+    assert w2.pages[1][2].groups == []
+
+    # Turned off in Settings: start fresh.
+    w2.settings.restore_session = False
+    w2.settings.save()
+    assert MainWindow().pages[0][2].groups == []

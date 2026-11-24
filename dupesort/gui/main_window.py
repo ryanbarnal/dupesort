@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from .. import APP_NAME, AUTHOR, __version__, videos
 from ..music import fingerprint
+from ..core import state
 from ..settings import Settings
 from . import icons, theme
 from .category_page import DocumentPage, MusicPage, PhotoPage, VideoPage
@@ -132,12 +133,41 @@ class MainWindow(QMainWindow):
         self._build_menus()
         self._refresh_icons()
         self.statusBar().showMessage("Ready")
+        self._restore_session()
 
         # Look for a new version shortly after start-up, then every 6 hours.
         self.update_timer = QTimer(self, interval=6 * 60 * 60 * 1000)
         self.update_timer.timeout.connect(self._auto_check_updates)
         QTimer.singleShot(8000, self._auto_check_updates)
         self.update_timer.start()
+
+    # --- remembering where you left off ----------------------------------------
+    def _restore_session(self) -> None:
+        if not self.settings.restore_session:
+            return
+        win = state.load_window()
+        if win.get("size"):
+            self.resize(*win["size"])
+        if win.get("maximized"):
+            self.setWindowState(self.windowState() | Qt.WindowMaximized)
+        for _, _, page in self.pages:
+            if hasattr(page, "restore_state"):
+                page.restore_state()
+        if 0 <= win.get("page", 0) < self.nav.count():
+            self.nav.setCurrentRow(win.get("page", 0))
+
+    def _save_session(self, interrupted: dict) -> None:
+        if not self.settings.restore_session:
+            return
+        for _, _, page in self.pages:
+            if hasattr(page, "save_state"):
+                page.save_state(interrupted.get(id(page), ""))
+        size = self.normalGeometry().size() if self.isMaximized() else self.size()
+        try:
+            state.save_window({"page": self.nav.currentRow(), "maximized": self.isMaximized(),
+                               "size": [size.width(), size.height()]})
+        except OSError:
+            pass
 
     def _auto_check_updates(self) -> None:
         if os.environ.get("DUPESORT_NO_UPDATE_CHECK"):  # set by the tests
@@ -284,6 +314,8 @@ class MainWindow(QMainWindow):
                 != QMessageBox.Yes:
             event.ignore()
             return
+        # Remember the work (and what was still running) before stopping it.
+        self._save_session({id(p): getattr(p, "_task_label", "") for p in busy})
         for p in busy:
             p.task.cancel()
         self.settings.save()

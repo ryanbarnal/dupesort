@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QHBoxLayout, QLabel, QMessageBox,
     QProgressBar, QPushButton, QSpinBox, QSplitter, QTabBar, QTabWidget, QVBoxLayout, QWidget,
@@ -13,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from .. import documents, photos, videos
 from ..core.duplicates import KEEP_STRATEGIES, DuplicateGroup, choose_keepers
+from ..core import state
 from ..core.history import Session
 from ..core.scanner import DUPLICATES_DIR, FileEntry, scan
 from ..music import fingerprint
@@ -29,6 +32,9 @@ ENGINES = {
     "videos": (videos.find_duplicates, videos.quality),
     "documents": (documents.find_duplicates, documents.quality),
 }
+
+
+_SAVE_LOCK = threading.Lock()  # one save at a time
 
 
 class CategoryPage(QWidget):
@@ -90,6 +96,7 @@ class CategoryPage(QWidget):
             self.tree.itemDoubleClicked.connect(
                 lambda item, _col: item.parent() is not None and self.preview.player.play())
         self.tree.keep_changed.connect(self._update_summary)
+        self.tree.keep_changed.connect(self.schedule_save)
         split = QSplitter()
         split.addWidget(self.tree)
         split.addWidget(self.preview)
@@ -126,6 +133,11 @@ class CategoryPage(QWidget):
         self.switch.currentChanged.connect(self.tabs.setCurrentIndex)
         self.tabs.currentChanged.connect(self.switch.setCurrentIndex)
         self.tabs.currentChanged.connect(self._section_changed)
+        self.tabs.currentChanged.connect(self.schedule_save)
+        # Work is saved a moment after it changes, so a crash loses next to nothing.
+        self._save_timer = QTimer(self, singleShot=True, interval=1500)
+        self._save_timer.timeout.connect(lambda: self.save_state(background=True))
+        self._task_label = ""
         switch_row = QHBoxLayout()
         switch_row.addWidget(self.switch)
         switch_row.addStretch()
@@ -201,6 +213,7 @@ class CategoryPage(QWidget):
         for w in self._busy_widgets:
             w.setEnabled(False)
         self.status.setText(label)
+        self._task_label = label
         self.progress.setRange(0, 0)
         self.progress.setVisible(True)
         self.cancel_btn.setVisible(True)
@@ -241,6 +254,74 @@ class CategoryPage(QWidget):
         for w in self._busy_widgets:
             w.setEnabled(True)
         self.move_btn.setEnabled(bool(self.groups))
+        self.schedule_save()
+
+    # --- remembering work between runs -----------------------------------------
+    def _parts(self):
+        """The sections that keep state of their own (Tags tab, Convert tabs)."""
+        return [self.tabs.widget(i) for i in range(self.tabs.count())
+                if hasattr(self.tabs.widget(i), "export_state")]
+
+    def schedule_save(self, *_args) -> None:
+        if self.settings.restore_session:
+            self._save_timer.start()
+
+    def save_state(self, interrupted: str = "", background: bool = False) -> None:
+        """Remember this page's work. Saves made while you work run in the background, so a
+        big library never freezes the window; the save on closing runs straight away."""
+        if not self.settings.restore_session:
+            return
+        proposals, convert = None, {}
+        for part in self._parts():
+            data = part.export_state()
+            if part is getattr(self, "tag_tab", None):
+                proposals = data
+            else:
+                convert[type(part).__name__] = data
+        # Snapshot the lists now; the groups' keep ticks are copied as they may change.
+        groups = [DuplicateGroup(list(g.files), g.reason, set(g.keep)) for g in self.groups]
+        args = (self.category, list(self.files), groups, self.tabs.currentIndex(),
+                proposals, convert, interrupted)
+
+        def write():
+            with _SAVE_LOCK:
+                try:
+                    state.save_page(*args)
+                except OSError:
+                    pass  # e.g. a full disk: the work just isn't remembered this time
+
+        if background:
+            threading.Thread(target=write, daemon=True).start()
+        else:
+            write()
+
+    def restore_state(self) -> None:
+        saved = state.load_page(self.category)
+        if not saved:
+            return
+        self.files, self.groups = saved["files"], saved["groups"]
+        self.tree.set_groups(self.groups)
+        self._update_summary()
+        for part in self._parts():
+            if part is getattr(self, "tag_tab", None):
+                part.restore_state(saved["proposals"])
+            else:
+                part.restore_state(saved["convert"].get(type(part).__name__) or {})
+        if 0 <= saved["section"] < self.tabs.count():
+            self.tabs.setCurrentIndex(saved["section"])
+        when = datetime.fromtimestamp(saved["saved"]).strftime("%d %b %Y, %H:%M")
+        if saved["interrupted"]:
+            text = (f"DupeSort was closed during “{saved['interrupted'].rstrip('…')}” on "
+                    f"{when}. Results from before that are shown; press Scan folders to "
+                    "run it again.")
+        elif self.files or self.groups:
+            text = f"Picked up where you left off ({when}). Scan folders again to refresh."
+        else:
+            text = ""
+        if saved["dropped"]:
+            text += (f" {saved['dropped']} file{'s' * (saved['dropped'] != 1)} that moved or "
+                     "changed since were left out.")
+        self.status.setText(text.strip())
 
     def _save_folders(self) -> None:
         self.settings.folders[self.category] = self.folders.folders()

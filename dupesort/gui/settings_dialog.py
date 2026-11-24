@@ -86,6 +86,9 @@ class SettingsDialog(QDialog):
         self.updates = QCheckBox("Check for new versions automatically")
         self.updates.setChecked(s.check_updates)
         look.addRow("Updates:", self.updates)
+        self.restore = QCheckBox("Reopen where I left off (results, lookups, lists)")
+        self.restore.setChecked(s.restore_session)
+        look.addRow("Start-up:", self.restore)
         look_box = QGroupBox("Appearance")
         look_box.setLayout(look)
 
@@ -119,5 +122,6 @@ class SettingsDialog(QDialog):
         s.accent = self.accent.currentText()
         s.play_intro = self.intro.isChecked()
         s.check_updates = self.updates.isChecked()
+        s.restore_session = self.restore.isChecked()
         s.save()
         super().accept()

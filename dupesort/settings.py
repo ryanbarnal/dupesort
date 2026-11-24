@@ -36,6 +36,7 @@ class Settings:
     theme_mode: str = "System"  # System / Light / Dark
     accent: str = "Mono"
     play_intro: bool = True
+    restore_session: bool = True  # reopen with the last results, lookups and lists
     # Updates
     check_updates: bool = True
     skipped_update: str = ""  # a version the user chose to skip
