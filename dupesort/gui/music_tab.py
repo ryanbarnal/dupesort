@@ -15,6 +15,7 @@ from ..music import organizer
 from ..music.lookup import Match, Proposal
 from ..music.tags import format_name
 from . import icons
+from .license_dialog import require as require_license
 
 EDIT_FIELDS = ("title", "artist", "album", "albumartist", "genre", "date", "tracknumber")
 COLUMNS = ["Apply", "File", "Current", "Suggested", "Genre", "Lyrics", "Match", "Status"]
@@ -275,6 +276,8 @@ class TagTab(QWidget):
         return next((f for f in self.page.files if f.path == path), None)
 
     def apply(self) -> None:
+        if not require_license(self, "write tags and rename songs"):
+            return
         todo = [p for p in self.proposals if p.apply and p.match and not p.done]
         if not todo:
             return
@@ -313,6 +316,8 @@ class TagTab(QWidget):
         self.page.run_task("Writing tags…", job, done)
 
     def rename_all(self) -> None:
+        if not require_license(self, "rename songs"):
+            return
         files = list(self.page.files)
         if not files:
             QMessageBox.information(self, "Scan first", "Scan your music folders first.")

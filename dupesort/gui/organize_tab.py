@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from .. import documents, videos
 from ..core.history import Session
 from . import icons
+from .license_dialog import require as require_license
 from ..core.organize import apply_moves, date_source, file_date, plan_date_moves
 
 
@@ -109,6 +110,8 @@ class PlanTab(QWidget):
                              (f" {skipped} unmoved duplicates are left out." if skipped else ""))
 
     def apply(self) -> None:
+        if not require_license(self, "move files into folders"):
+            return
         ticked = [self.plan[r] for r in range(self.table.rowCount())
                   if self.table.item(r, 0).checkState() == Qt.Checked]
         if not ticked:

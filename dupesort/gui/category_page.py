@@ -22,6 +22,7 @@ from ..music import fingerprint
 from ..music import organizer as music
 from ..settings import Settings
 from . import icons
+from .license_dialog import require as require_license
 from .player import release_all
 from .widgets import DuplicateTree, FolderList, Preview, human_size
 from .worker import Task
@@ -373,7 +374,7 @@ class CategoryPage(QWidget):
 
     def move_duplicates(self) -> None:
         moves = [(g, f) for g in self.groups for f in g.duplicates]
-        if not moves:
+        if not moves or not require_license(self, "move duplicates"):
             return
         answer = QMessageBox.question(
             self, "Move duplicates",

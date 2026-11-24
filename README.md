@@ -78,6 +78,17 @@ The app finds these on your `PATH`. For a self-contained build, put the executab
 
 MusicBrainz, Cover Art Archive and LRCLIB need no key. MusicBrainz allows one request per second, so the first lookup of a large library takes a while. Each artist's albums are cached for the rest of the session.
 
+## Free trial and licenses
+
+The desktop app is free for **30 days**. After that it still scans and shows results, previews and History (Undo always works), but moving, writing tags, renaming, organizing and converting need a license. The web app stays free.
+
+License keys are signed with your private signing key and checked offline by the app, so they can't be faked:
+
+1. Once, on your own computer: `python packaging/license_tool.py init`. This creates your private signing key at `~/.dupesort-signing-key` and writes its public half into `dupesort/licensing.py`. Commit and push that file, then release. **Back the key file up and never commit it**; without it you can't make keys that existing copies accept.
+2. For each buyer: `python packaging/license_tool.py issue "Their Name"`, then email them the printed `DUPESORT-…` key. They paste it in **Help → Activate DupeSort…** (or the trial button in the sidebar).
+
+"Get a license" emails `SUPPORT_EMAIL`; set `BUY_URL` in `dupesort/__init__.py` to send buyers to a payment page instead. Release builds stop with an error if the public key hasn't been set.
+
 ## Installing
 
 - **macOS:** open `DupeSort-<version>-macOS-arm64.dmg` and drag **DupeSort** onto **Applications**. If the build isn't signed with an Apple Developer ID, macOS warns the first time it opens: right-click the app → **Open** → **Open**. On recent macOS versions you may need **System Settings → Privacy & Security → Open Anyway** instead.

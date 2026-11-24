@@ -164,6 +164,12 @@ def stylesheet(c: dict[str, str]) -> str:
 
         QFrame#updateBar {{ background: {c['base']}; border-bottom: 1px solid {c['border']}; }}
 
+        QPushButton#trial {{ text-align: left; border: 1px solid {c['border']}; background: transparent;
+                             color: {c['muted']}; font-size: 12px; padding: 5px 9px; }}
+        QPushButton#trial:hover {{ color: {c['text']}; border-color: {c['faint']}; }}
+        QPushButton#trial[ended="true"] {{ color: {c['text']}; border-color: {c['text']};
+                                           font-weight: 600; }}
+
         /* Folder chips */
         QPushButton#chip {{ background: {c['soft']}; border: 1px solid {c['soft']};
                             border-radius: 13px; padding: 3px 8px 3px 12px; min-height: 18px; }}

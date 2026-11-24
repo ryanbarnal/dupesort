@@ -19,6 +19,7 @@ from ..convert.ffmpeg import ConversionError
 from ..core.scanner import CATEGORY_EXTENSIONS
 from ..tools import find_tool
 from . import icons
+from .license_dialog import require as require_license
 from .widgets import human_size
 
 
@@ -191,6 +192,8 @@ class ConvertTab(QWidget):
         return None
 
     def start(self) -> None:
+        if not require_license(self, "convert files"):
+            return
         files = self.files.paths()
         if not files:
             QMessageBox.information(self, "No files", "Add some files to convert first.")
@@ -498,6 +501,8 @@ class PdfTab(ConvertTab):
                 "dpi": int(self.dpi.currentText()), "quality": self.quality.value()}
 
     def start(self) -> None:
+        if not require_license(self, "convert files"):
+            return
         # Single-output tasks process every file in one step.
         self._ran_combined = False
         super().start()
