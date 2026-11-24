@@ -137,6 +137,16 @@ class ConvertTab(QWidget):
         lay.addLayout(bottom)
 
     # hooks
+    def export_state(self) -> dict:
+        return {"files": [str(x) for x in self.files.paths()],
+                "to_folder": self.to_folder.isChecked(), "folder": self.folder.text()}
+
+    def restore_state(self, data: dict) -> None:
+        self.files.clear()
+        self.files.add(Path(x) for x in data.get("files", []) if Path(x).is_file())
+        self.folder.setText(data.get("folder", ""))
+        (self.to_folder if data.get("to_folder") else self.beside).setChecked(True)
+
     def input_exts(self) -> set[str]:
         return self.exts
 
