@@ -11,6 +11,7 @@ def isolated_dirs(tmp_path, monkeypatch):
     """Keep history and settings out of the real user folders."""
     monkeypatch.setenv("DUPESORT_DATA", str(tmp_path / "_appdata"))
     monkeypatch.setenv("DUPESORT_CONFIG", str(tmp_path / "_config"))
+    monkeypatch.setenv("DUPESORT_NO_UPDATE_CHECK", "1")  # no GitHub calls from tests
 
 
 def make_wav(path: Path, freq: float = 440.0, seconds: float = 1.0, rate: int = 8000) -> Path:

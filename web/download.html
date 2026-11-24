@@ -17,7 +17,6 @@
     <nav class="nav">
       <a href="./">Web app</a>
       <a href="download.html" aria-current="page">Download</a>
-      <a class="hide-sm" href="https://github.com/ryanbarnal/dupesort">GitHub</a>
     </nav>
     <button class="icon-btn" id="theme" type="button"></button>
   </header>
@@ -91,7 +90,7 @@
   <footer>
     <div class="inner">
       <span>DupeSort by Ryan Ocbina Barnal</span>
-      <span><a href="https://github.com/ryanbarnal/dupesort/releases">All releases</a> · <a href="https://github.com/ryanbarnal/dupesort">Source</a></span>
+      <span><a href="./">Web app</a></span>
     </div>
   </footer>
 
@@ -124,7 +123,7 @@
       const version = (rel.tag_name || '').replace(/^v/, '');
       const date = rel.published_at ? new Date(rel.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '';
       document.querySelector('#version').innerHTML =
-        `Version ${version}${date ? ` · ${date}` : ''} · <a href="${rel.html_url}">What's new</a>`;
+        `Version ${version}${date ? ` · ${date}` : ''}`;
       const key = { Windows: 'windows', macOS: 'mac', Linux: 'linux' }[os];
       const main = document.querySelector('#main-dl');
       if (key && links[key]) {
@@ -132,7 +131,7 @@
         main.lastChild.textContent = `Download for ${os}`;
       } else main.lastChild.textContent = 'All downloads';
     } catch {
-      document.querySelector('#version').innerHTML = '<a href="https://github.com/ryanbarnal/dupesort/releases/latest">See the latest release on GitHub</a>';
+      document.querySelector('#version').textContent = '';
     }
   </script>
 </body>
