@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
+import weakref
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QCoreApplication, Qt, QUrl
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSlider, QWidget
 
 from . import icons
+
+
+_players: "weakref.WeakSet[MiniPlayer]" = weakref.WeakSet()
+
+
+def release_all() -> None:
+    """Make every player let go of its file. Windows refuses to change a file that is open,
+    so this runs before DupeSort writes tags, renames, moves or converts anything."""
+    for player in list(_players):
+        try:
+            player.release()
+        except RuntimeError:  # the widget is already gone
+            pass
 
 
 def _time(ms: int) -> str:
@@ -22,6 +36,7 @@ class MiniPlayer(QWidget):
     def __init__(self, video: bool = False, parent=None) -> None:
         super().__init__(parent)
         self.path: Optional[Path] = None
+        _players.add(self)
         # For videos, a picture area the preview panel places above its details.
         self.video = None
         if video:
@@ -74,8 +89,6 @@ class MiniPlayer(QWidget):
         self._player.positionChanged.connect(self._position)
         self._player.playbackStateChanged.connect(self._state)
         self._player.errorOccurred.connect(self._error)
-        if self.path:
-            self._player.setSource(QUrl.fromLocalFile(str(self.path)))
         return True
 
     @property
@@ -97,13 +110,18 @@ class MiniPlayer(QWidget):
         self.seek.setRange(0, 0)
         self.time.setText("0:00")
         if self._player is not None:
+            # Close the old file; open the new one only if it should play now, so merely
+            # selecting a song never holds it open.
             self._player.stop()
-            self._player.setSource(QUrl.fromLocalFile(str(path)) if path else QUrl())
+            self._player.setSource(QUrl())
             if was_playing and path:
-                self._player.play()
+                self.play()
 
     def play(self) -> None:
         if self.path and self._ensure():
+            url = QUrl.fromLocalFile(str(self.path))
+            if self._player.source() != url:  # released earlier, or never loaded
+                self._player.setSource(url)
             if self.video is not None:
                 self.video.setVisible(True)
             self._player.play()
@@ -111,6 +129,16 @@ class MiniPlayer(QWidget):
     def stop(self) -> None:
         if self._player is not None:
             self._player.stop()
+
+    def release(self) -> None:
+        """Stop and close the file (it is opened again on the next play)."""
+        if self._player is None or self._player.source().isEmpty():
+            return
+        self._player.stop()
+        self._player.setSource(QUrl())
+        QCoreApplication.processEvents()  # let the media backend close the file now
+        if self.video is not None:
+            self.video.setVisible(False)
 
     def toggle(self) -> None:
         if self.playing:

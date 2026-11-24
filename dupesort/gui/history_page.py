@@ -63,6 +63,9 @@ class HistoryPage(QWidget):
         if QMessageBox.question(self, "Undo", f"Undo these changes?\n\n{names}\n\n"
                                 "Rescan afterwards to refresh the results.") != QMessageBox.Yes:
             return
+        from .player import release_all
+
+        release_all()  # a previewed song or video would block putting it back on Windows
         problems = []
         for s in chosen:  # newest first, as listed
             problems += s.undo()

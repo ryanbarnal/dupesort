@@ -191,3 +191,58 @@ def test_document_previews(app, tmp_path):
     assert "line 39" in preview.excerpt.text() and not preview.excerpt.isHidden()
     preview.show_entry(entry(docx))
     assert "No preview" in preview.image.text()
+
+
+def _open_files():
+    import os
+
+    fd_dir = "/proc/self/fd"
+    out = set()
+    for fd in os.listdir(fd_dir):
+        try:
+            out.add(os.path.realpath(os.readlink(os.path.join(fd_dir, fd))))
+        except OSError:
+            pass
+    return out
+
+
+def test_player_lets_go_of_the_file(app, tmp_path):
+    """Windows can't change a file that is open, so the preview must close it before
+    tags are written, files renamed or moved (it reopens it on the next play)."""
+    import os
+    import sys
+    import time
+
+    import pytest
+    from conftest import make_wav
+
+    from dupesort.core.scanner import scan
+    from dupesort.gui.main_window import MainWindow
+    from dupesort.gui.player import release_all
+
+    path = os.path.realpath(make_wav(tmp_path / "song.wav", seconds=2.0))
+    page = MainWindow().pages[0][2]
+    player = page.preview.player
+    page.preview.show_entry(scan([tmp_path], "music")[0])
+    # Selecting a song doesn't open it.
+    assert player._player is None or player._player.source().isEmpty()
+    player.play()
+    end = time.time() + 3
+    while time.time() < end and sys.platform.startswith("linux") and path not in _open_files():
+        app.processEvents()
+    if sys.platform.startswith("linux") and path not in _open_files():
+        pytest.skip("the media backend didn't open the file here (no audio support)")
+    release_all()
+    for _ in range(50):
+        app.processEvents()
+    assert player._player.source().isEmpty()
+    if sys.platform.startswith("linux"):
+        assert path not in _open_files()
+    # Play again: the file is reopened.
+    player.play()
+    assert not player._player.source().isEmpty()
+    # Starting any job (tag writing, renaming, moving…) releases it too.
+    page.run_task("Test", lambda t: None, lambda _r: None)
+    assert player._player.source().isEmpty()
+    for _ in range(50):
+        app.processEvents()
