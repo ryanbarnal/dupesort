@@ -221,7 +221,8 @@ def test_player_lets_go_of_the_file(app, tmp_path):
     from dupesort.gui.player import release_all
 
     path = os.path.realpath(make_wav(tmp_path / "song.wav", seconds=2.0))
-    page = MainWindow().pages[0][2]
+    window = MainWindow()  # keep a reference, or the window goes away mid-test
+    page = window.pages[0][2]
     player = page.preview.player
     page.preview.show_entry(scan([tmp_path], "music")[0])
     # Selecting a song doesn't open it.
@@ -244,5 +245,8 @@ def test_player_lets_go_of_the_file(app, tmp_path):
     # Starting any job (tag writing, renaming, moving…) releases it too.
     page.run_task("Test", lambda t: None, lambda _r: None)
     assert player._player.source().isEmpty()
-    for _ in range(50):
+    end = time.time() + 5
+    while page.task is not None and time.time() < end:  # let the job finish before teardown
         app.processEvents()
+    assert page.task is None
+    window.close()

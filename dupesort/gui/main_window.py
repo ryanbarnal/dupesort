@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, QTimer, QUrl
@@ -139,6 +140,8 @@ class MainWindow(QMainWindow):
         self.update_timer.start()
 
     def _auto_check_updates(self) -> None:
+        if os.environ.get("DUPESORT_NO_UPDATE_CHECK"):  # set by the tests
+            return
         if self.settings.check_updates and not self.update_bar.isVisible():
             self.update_bar.check(manual=False)
 
