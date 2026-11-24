@@ -22,8 +22,6 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
-from platformdirs import user_config_dir, user_data_dir
-
 from . import APP_NAME
 
 TRIAL_DAYS = 30
@@ -186,6 +184,9 @@ _SALT = b"DupeSort trial v1"  # makes casual edits of the saved dates obvious
 
 
 def _files() -> list[Path]:
+    # Imported here so packaging/license_tool.py runs on a plain Python install.
+    from platformdirs import user_config_dir, user_data_dir
+
     config = Path(os.environ.get("DUPESORT_CONFIG", user_config_dir(APP_NAME, False)))
     data = Path(os.environ.get("DUPESORT_DATA", user_data_dir(APP_NAME, False)))
     return [config / "license.json", data / ".trial"]
