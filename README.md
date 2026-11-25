@@ -84,9 +84,16 @@ The desktop app is free for **30 days**. After that it still scans and shows res
 
 License keys are signed with your private signing key and checked offline by the app, so they can't be faked.
 
-**Easiest: the Key Maker page.** Open `packaging/DupeSort Key Maker.html` in Chrome or Edge, straight from the folder; it needs no installation and works offline. Create your signing key once (it downloads as `dupesort-signing-key.txt`; keep it safe), then open that file whenever you make keys: type the buyer's name, then copy or email the key. It also checks keys and keeps a list of the keys you've made. Its public key goes into `PUBLIC_KEY` in `dupesort/licensing.py`.
+**Easiest: DupeSort Key Maker**, a portable program like Tanod Key Maker. Download it from the **keymaker** workflow's artifacts in GitHub Actions (`DupeSort Key Maker.exe` for Windows, `DupeSort Key Maker.app` for macOS); put it on a USB drive or in a private folder and double-click it. It opens a page in your browser, served only to your computer, and closes itself a few minutes after the page is closed.
 
-**Or the command line** (needs Python):
+- **Create a new signing key** once. It's locked with your password (AES-256-GCM, PBKDF2-SHA256 with 600,000 rounds), saved as `dupesort-signing-key.txt` next to the program, and remembered. Nothing stores the password: if you forget it, the key is gone.
+- Each time: unlock with the password, type the buyer's name, then **Make key**, and copy or email it. Every key goes into `DupeSort keys ledger.csv` next to the key file.
+- **Check a key** shows who a pasted key belongs to and whether it's genuine. **Copy public key** gives the value for `PUBLIC_KEY` in `dupesort/licensing.py`.
+- Never ship the Key Maker to customers, and never commit the key file or ledger (both are git-ignored).
+
+The same page also works without the program: open `packaging/DupeSort Key Maker.html` in Chrome or Edge. Then the key file goes to Downloads and the list of keys stays in that browser.
+
+**Or the command line** (needs Python; key files without a password only):
 
 1. Once, on your own computer: `python packaging/license_tool.py init`. This creates your private signing key at `~/.dupesort-signing-key` and writes its public half into `dupesort/licensing.py`. Commit and push that file, then release. **Back the key file up and never commit it**; without it you can't make keys that existing copies accept.
 2. For each buyer: `python packaging/license_tool.py issue "Their Name"`, then email them the printed `DUPESORT-…` key. They paste it in **Help → Activate DupeSort…** (or the trial button in the sidebar).

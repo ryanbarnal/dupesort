@@ -46,26 +46,58 @@
 
   <section>
     <h2><span class="n">1</span> Your signing key</h2>
-    <p class="muted">The secret that makes your keys genuine. Create it once, keep the file safe, and open it here whenever you make keys.</p>
-    <div class="row">
-      <button id="open" type="button">Open signing key file…</button>
-      <button id="create" type="button">Create a new signing key</button>
-      <input id="file" type="file" accept=".txt,*" hidden>
+    <p class="muted">The secret that makes your keys genuine, kept in a file locked with your password.
+      Create it once and keep it safe; after that, unlock it here whenever you make keys.</p>
+
+    <div id="current" hidden>
+      <p style="margin:0 0 6px">Signing key file: <span class="mono" id="current-path"></span></p>
     </div>
+
+    <div id="unlock" hidden>
+      <div class="row" style="flex-wrap:nowrap">
+        <input id="unlock-pw" type="password" placeholder="Password for the signing key" autocomplete="current-password">
+        <button id="unlock-btn" class="primary" type="button">Unlock</button>
+      </div>
+      <p class="muted" id="unlock-msg" style="margin:6px 0 0"></p>
+    </div>
+
     <div id="loaded" hidden>
-      <p class="ok" style="margin-top:12px">✓ Signing key loaded.</p>
+      <p class="ok" style="margin-top:4px">✓ Signing key unlocked. It stays in memory only, until you close this page.</p>
       <p>Public key (safe to share; it goes into the app):</p>
       <div class="box mono" id="public"></div>
       <div class="row">
         <button id="copy-public" type="button">Copy public key</button>
+        <button id="reveal" type="button" hidden>Show in folder</button>
         <span class="muted" id="public-note"></span>
       </div>
     </div>
-    <div class="warn" id="created-warning" hidden>
-      <b>Saved as “dupesort-signing-key.txt” in your Downloads.</b> Move it somewhere safe and back it up
-      (a password manager is ideal). Never share it or put it in GitHub. Without it you can't make keys that
-      existing copies of DupeSort accept; with it, anyone can.
+
+    <div class="row" id="choose" style="margin-top:12px">
+      <button id="open" type="button">Open signing key file…</button>
+      <button id="create" type="button">Create a new signing key…</button>
+      <input id="file" type="file" accept=".txt,*" hidden>
     </div>
+
+    <div id="path-form" hidden style="margin-top:10px">
+      <p class="muted" style="margin:0 0 6px">Paste the key file's location (in Explorer: Shift + right-click the file → Copy as path).</p>
+      <div class="row" style="flex-wrap:nowrap">
+        <input id="path" type="text" placeholder="e.g. D:\Keys\dupesort-signing-key.txt">
+        <button id="path-btn" type="button">Open</button>
+      </div>
+    </div>
+
+    <div id="new-form" hidden style="margin-top:12px">
+      <p style="margin:0 0 6px"><b>Choose a password</b> for the new signing key (at least 10 characters).
+        Nothing stores it: if you forget it, the key is gone and keys can't be made for versions already released.</p>
+      <div class="row" style="flex-wrap:nowrap">
+        <input id="new-pw" type="password" placeholder="Password" autocomplete="new-password">
+        <input id="new-pw2" type="password" placeholder="Type it again" autocomplete="new-password">
+        <button id="new-btn" class="primary" type="button">Create</button>
+      </div>
+      <p class="muted" id="new-msg" style="margin:6px 0 0"></p>
+    </div>
+
+    <div class="warn" id="created-warning" hidden></div>
   </section>
 
   <section>
@@ -299,38 +331,153 @@ async function readKey(text, publicKey) {
   }
 }
 
-globalThis.DupeKeys = { publicKeyOf, sign, verify, hex, unhex, PREFIX, makeKey, readKey };
+// --- the signing key file, optionally locked with a password -----------------------------------
+// Plain: 64 hexadecimal characters (the same as packaging/license_tool.py).
+// Locked: "DUPESORT-PRIVATE-KEY-1:" + base64(salt 16 | iv 12 | AES-256-GCM ciphertext), with the
+// AES key derived from the password by PBKDF2-SHA256 (600,000 rounds). The password isn't stored.
+const LOCKED_PREFIX = 'DUPESORT-PRIVATE-KEY-1:';
+const KDF_ROUNDS = 600000;
+const MIN_PASSWORD = 10;
+
+const b64 = (bytes) => btoa(String.fromCharCode(...bytes));
+const unb64 = (text) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
+
+async function aesKey(password, salt) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: KDF_ROUNDS, hash: 'SHA-256' }, base,
+    { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+
+function isLocked(text) {
+  return (text || '').trim().startsWith(LOCKED_PREFIX);
+}
+
+/** The key file's text for `secret`: locked with `password`, or plain hex if none is given. */
+async function keyFileText(secret, password) {
+  if (!password) return hex(secret) + '\n';
+  if (password.length < MIN_PASSWORD) throw new Error(`Use a password of at least ${MIN_PASSWORD} characters.`);
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await aesKey(password, salt), secret));
+  return LOCKED_PREFIX + b64(concat(salt, iv, ct)) + '\n';
+}
+
+/** The 32-byte secret from a key file's text. Throws "password needed" / "wrong password". */
+async function secretFromFile(text, password) {
+  const t = (text || '').trim();
+  if (!isLocked(t)) {
+    const bytes = unhex(t);
+    if (!bytes || bytes.length !== 32) throw new Error("That file isn't a DupeSort signing key.");
+    return bytes;
+  }
+  if (!password) throw new Error('password needed');
+  let raw;
+  try {
+    raw = unb64(t.slice(LOCKED_PREFIX.length));
+  } catch {
+    throw new Error("That file isn't a DupeSort signing key.");
+  }
+  try {
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: raw.slice(16, 28) },
+      await aesKey(password, raw.slice(0, 16)), raw.slice(28));
+    return new Uint8Array(plain);
+  } catch {
+    throw new Error('wrong password');
+  }
+}
+
+globalThis.DupeKeys = { publicKeyOf, sign, verify, hex, unhex, PREFIX, makeKey, readKey,
+  isLocked, keyFileText, secretFromFile, MIN_PASSWORD };
 })();
 </script>
 <script>
 (() => {
   const K = globalThis.DupeKeys;
   const $ = (s) => document.querySelector(s);
-  let secret = null, publicKey = null;
+  const APP = window.KEYMAKER || null; // set when the page runs inside DupeSort Key Maker
+  let secret = null, publicKey = null, lockedText = null, failures = 0;
   const LOG = 'dupesort-keymaker-log';
+  let ledgerRows = [];
 
-  const readLog = () => { try { return JSON.parse(localStorage.getItem(LOG) || '[]'); } catch { return []; } };
-  const writeLog = (rows) => { try { localStorage.setItem(LOG, JSON.stringify(rows)); } catch {} };
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+  async function api(path, body = {}) {
+    const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Token': APP.token }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `The Key Maker answered ${res.status}.`);
+    return data;
+  }
+
+  // --- the ledger: a file next to the key (in the program), or this browser (page on its own) ---
+  function readLocal() { try { return JSON.parse(localStorage.getItem(LOG) || '[]'); } catch { return []; } }
+  async function addToLedger(row) {
+    if (APP) ledgerRows = (await api('/api/ledger/add', row)).ledger;
+    else {
+      ledgerRows = readLocal().concat([row]);
+      try { localStorage.setItem(LOG, JSON.stringify(ledgerRows)); } catch {}
+    }
+    renderLog();
+  }
   function renderLog() {
-    const rows = readLog();
-    $('#log').innerHTML = rows.length
-      ? rows.slice().reverse().map((r) => `<tr><td>${esc(r.date)}</td><td>${esc(r.name)}</td><td class="mono">${esc(r.key)}</td></tr>`).join('')
+    $('#log').innerHTML = ledgerRows.length
+      ? ledgerRows.slice().reverse().map((r) => `<tr><td>${esc(r.date)}</td><td>${esc(r.name)}</td><td class="mono">${esc(r.key)}</td></tr>`).join('')
       : '<tr><td colspan="3" class="muted">No keys yet.</td></tr>';
   }
 
-  async function useSecret(bytes, created) {
+  // --- step 1 ---------------------------------------------------------------------------------
+  function show(id, on) { $(id).hidden = !on; }
+
+  async function useSecret(bytes, note = '') {
     secret = bytes;
     publicKey = await K.publicKeyOf(secret);
     $('#public').textContent = K.hex(publicKey);
-    $('#loaded').hidden = false;
-    $('#created-warning').hidden = !created;
+    show('#loaded', true);
+    show('#unlock', false);
+    show('#new-form', false);
+    show('#path-form', false);
+    $('#public-note').textContent = note;
     $('#make').disabled = !$('#name').value.trim();
-    $('#public-note').textContent = created
-      ? 'Send this public key to put into DupeSort (dupesort/licensing.py), then release a new version.'
-      : '';
     checkKey();
+  }
+
+  async function openText(text, path) {
+    lockedText = null;
+    secret = null;
+    show('#loaded', false);
+    if (path) {
+      $('#current-path').textContent = path;
+      show('#current', true);
+    }
+    if (K.isLocked(text)) {
+      lockedText = text;
+      show('#unlock', true);
+      $('#unlock-msg').textContent = '';
+      $('#unlock-pw').value = '';
+      $('#unlock-pw').focus();
+      return;
+    }
+    await useSecret(await K.secretFromFile(text),
+      'This key file has no password. Make a new locked one with “Create a new signing key…” when you can.');
+  }
+
+  async function unlock() {
+    if (!lockedText) return;
+    const btn = $('#unlock-btn');
+    btn.disabled = true;
+    $('#unlock-msg').textContent = 'Unlocking…';
+    try {
+      await useSecret(await K.secretFromFile(lockedText, $('#unlock-pw').value));
+      failures = 0;
+      $('#unlock-pw').value = '';
+    } catch (e) {
+      failures += 1;
+      const wait = Math.min(30, 2 ** (failures - 1)); // a growing pause after wrong passwords
+      $('#unlock-msg').textContent = e.message === 'wrong password'
+        ? `That password doesn't open the key. Try again in ${wait} s.` : e.message;
+      await new Promise((r) => setTimeout(r, wait * 1000));
+      $('#unlock-msg').textContent = e.message === 'wrong password' ? "That password doesn't open the key." : e.message;
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   function download(name, text, type = 'text/plain') {
@@ -341,26 +488,85 @@ globalThis.DupeKeys = { publicKeyOf, sign, verify, hex, unhex, PREFIX, makeKey, 
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  $('#create').addEventListener('click', async () => {
-    if (secret && !confirm('A signing key is already loaded. Create a different one? Keys made with the new one only work after its public key is in DupeSort.')) return;
+  async function createKey() {
+    const pw = $('#new-pw').value, pw2 = $('#new-pw2').value;
+    if (pw.length < K.MIN_PASSWORD) return ($('#new-msg').textContent = `Use at least ${K.MIN_PASSWORD} characters.`);
+    if (pw !== pw2) return ($('#new-msg').textContent = "The two passwords don't match.");
+    $('#new-msg').textContent = 'Creating…';
     const bytes = crypto.getRandomValues(new Uint8Array(32));
-    download('dupesort-signing-key.txt', K.hex(bytes) + '\n');
-    await useSecret(bytes, true);
+    const text = await K.keyFileText(bytes, pw);
+    let where;
+    try {
+      if (APP) where = (await api('/api/key/save', { text })).path;
+      else download('dupesort-signing-key.txt', text);
+    } catch (e) {
+      $('#new-msg').textContent = e.message;
+      return;
+    }
+    $('#new-pw').value = $('#new-pw2').value = '';
+    if (where) {
+      $('#current-path').textContent = where;
+      show('#current', true);
+    }
+    const warn = $('#created-warning');
+    warn.innerHTML = `<b>${where ? `Saved as ${esc(where)}.` : 'Saved as “dupesort-signing-key.txt” in your Downloads.'}</b> ` +
+      'Back it up now (a USB drive and a password manager are good places) and remember the password: ' +
+      "nothing stores it. Never share the file or put it in GitHub. Without it you can't make keys that existing " +
+      'copies of DupeSort accept.';
+    show('#created-warning', true);
+    await useSecret(bytes, 'Send this public key to be put into DupeSort (dupesort/licensing.py), then release a new version.');
+    if (APP) await loadLedger();
+  }
+
+  async function loadLedger() {
+    if (APP) ledgerRows = (await api('/api/state')).ledger;
+    else ledgerRows = readLocal();
+    renderLog();
+  }
+
+  $('#unlock-btn').addEventListener('click', unlock);
+  $('#unlock-pw').addEventListener('keydown', (e) => e.key === 'Enter' && unlock());
+  $('#create').addEventListener('click', () => {
+    if (secret && !confirm('A signing key is already unlocked. Create a different one? Keys made with the new one only work after its public key is in DupeSort.')) return;
+    show('#new-form', true);
+    show('#path-form', false);
+    $('#new-msg').textContent = '';
+    $('#new-pw').focus();
   });
-  $('#open').addEventListener('click', () => $('#file').click());
+  $('#new-btn').addEventListener('click', createKey);
+  $('#new-pw2').addEventListener('keydown', (e) => e.key === 'Enter' && createKey());
+  $('#open').addEventListener('click', () => {
+    if (APP) {
+      show('#path-form', true);
+      show('#new-form', false);
+      $('#path').focus();
+    } else $('#file').click();
+  });
+  $('#path-btn').addEventListener('click', async () => {
+    try {
+      const r = await api('/api/key/read', { path: $('#path').value });
+      await openText(r.text, r.path);
+      show('#path-form', false);
+      await loadLedger();
+    } catch (e) {
+      alert(e.message);
+    }
+  });
+  $('#path').addEventListener('keydown', (e) => e.key === 'Enter' && $('#path-btn').click());
   $('#file').addEventListener('change', async (e) => {
     const f = e.target.files[0];
     e.target.value = '';
     if (!f) return;
-    const bytes = K.unhex((await f.text()).trim());
-    if (!bytes || bytes.length !== 32) {
-      alert("That file isn't a DupeSort signing key (it should hold 64 hexadecimal characters).");
-      return;
+    try {
+      await openText(await f.text(), f.name);
+    } catch (err) {
+      alert(err.message);
     }
-    await useSecret(bytes, false);
   });
   $('#copy-public').addEventListener('click', () => navigator.clipboard.writeText($('#public').textContent));
+  $('#reveal').addEventListener('click', () => api('/api/reveal').catch((e) => alert(e.message)));
 
+  // --- step 2: make a key ---------------------------------------------------------------------
   $('#name').addEventListener('input', () => { $('#make').disabled = !secret || !$('#name').value.trim(); });
   $('#name').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !$('#make').disabled) $('#make').click(); });
   $('#make').addEventListener('click', async () => {
@@ -387,18 +593,20 @@ globalThis.DupeKeys = { publicKeyOf, sign, verify, hex, unhex, PREFIX, makeKey, 
       'bottom of the sidebar), paste the key and press Activate.\n\nThe key works offline and stays ' +
       'activated when DupeSort updates. Please keep this email.\n');
     $('#email').href = `mailto:?subject=${subject}&body=${body}`;
-    const rows = readLog();
-    rows.push({ date: new Date().toISOString().slice(0, 10), name, key });
-    writeLog(rows);
-    renderLog();
+    try {
+      await addToLedger({ date: new Date().toISOString().slice(0, 10), name, key });
+    } catch (e) {
+      alert(`The key was made, but it couldn't be added to the ledger: ${e.message}`);
+    }
   });
   $('#copy-key').addEventListener('click', () => navigator.clipboard.writeText($('#key').textContent));
 
+  // --- step 3: check a key --------------------------------------------------------------------
   async function checkKey() {
     const text = $('#check').value.trim();
     const out = $('#check-result');
     if (!text) { out.textContent = ''; return; }
-    if (!publicKey) { out.innerHTML = '<span class="muted">Open your signing key first (step 1).</span>'; return; }
+    if (!publicKey) { out.innerHTML = '<span class="muted">Unlock your signing key first (step 1).</span>'; return; }
     const lic = await K.readKey(text, publicKey);
     out.innerHTML = lic
       ? `<span class="ok">✓ Genuine.</span> Licensed to <b>${esc(lic.name)}</b>, made ${esc(lic.issued)}.`
@@ -406,17 +614,45 @@ globalThis.DupeKeys = { publicKeyOf, sign, verify, hex, unhex, PREFIX, makeKey, 
   }
   $('#check').addEventListener('input', checkKey);
 
+  // --- step 4: keys made ----------------------------------------------------------------------
   $('#export').addEventListener('click', () => {
     const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
-    const rows = readLog();
-    download('DupeSort keys.csv', '﻿' + [['Date', 'Name', 'Key'], ...rows.map((r) => [r.date, r.name, r.key])].map((r) => r.map(q).join(',')).join('\r\n') + '\r\n', 'text/csv');
+    download('DupeSort keys.csv', '\ufeff' + [['Date', 'Name', 'Key'], ...ledgerRows.map((r) => [r.date, r.name, r.key])].map((r) => r.map(q).join(',')).join('\r\n') + '\r\n', 'text/csv');
   });
   $('#clear').addEventListener('click', () => {
-    if (confirm('Clear the list of keys made in this browser? The keys themselves keep working.')) { writeLog([]); renderLog(); }
+    if (confirm('Clear the list of keys made in this browser? The keys themselves keep working.')) {
+      try { localStorage.setItem(LOG, '[]'); } catch {}
+      ledgerRows = [];
+      renderLog();
+    }
   });
 
-  renderLog();
-  window.keymaker = { useSecret, get publicKey() { return publicKey; } };  // for tests
+  // --- start ----------------------------------------------------------------------------------
+  (async () => {
+    if (APP) {
+      // In the program: the ledger is a file next to the key, so it isn't cleared from here.
+      $('#clear').hidden = true;
+      $('#reveal').hidden = false;
+      document.querySelector('#log').closest('section').querySelector('.muted').textContent =
+        'Saved in “DupeSort keys ledger.csv” next to your signing key file.';
+      setInterval(() => api('/api/ping').catch(() => {}), 30000); // keep the program open
+      const st = await api('/api/state');
+      $('#open').textContent = 'Use another signing key file…';
+      if (st.exists) {
+        const r = await api('/api/key/read', {});
+        await openText(r.text, r.path);
+      } else {
+        $('#current-path').textContent = 'none yet. Create one, or open the one you have.';
+        show('#current', true);
+      }
+      ledgerRows = st.ledger;
+    } else {
+      ledgerRows = readLocal();
+    }
+    renderLog();
+  })().catch((e) => alert(e.message));
+
+  window.keymaker = { useSecret, openText, get publicKey() { return publicKey; } };  // for tests
 })();
 </script>
 </body>

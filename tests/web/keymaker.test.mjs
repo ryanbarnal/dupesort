@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 const html = readFileSync(new URL('../../packaging/DupeSort Key Maker.html', import.meta.url), 'utf8');
 const core = html.match(/<script id="core">([\s\S]*?)<\/script>/)[1];
-const ctx = { crypto: globalThis.crypto, TextEncoder, TextDecoder, Uint8Array, BigInt, Number, String, JSON, Date, Error };
+const ctx = { crypto: globalThis.crypto, TextEncoder, TextDecoder, Uint8Array, BigInt, Number, String, JSON, Date, Error, btoa, atob };
 ctx.globalThis = ctx;
 vm.runInNewContext(core, ctx);
 const K = ctx.DupeKeys;
@@ -40,4 +40,21 @@ test('keys round-trip and fakes are rejected', async () => {
   const tampered = key.slice(0, i) + (key[i] === 'A' ? 'B' : 'A') + key.slice(i + 1);
   assert.equal(await K.readKey(tampered, pub), null);
   assert.equal(await K.readKey('DUPESORT-HELLO', pub), null);
+});
+
+test('signing key files: plain hex or locked with a password', async () => {
+  const secret = new Uint8Array(32).map((_, i) => 255 - i);
+  const plain = await K.keyFileText(secret);
+  assert.equal(plain.trim(), K.hex(secret));
+  assert.ok(!K.isLocked(plain));
+  assert.deepEqual([...(await K.secretFromFile(plain))], [...secret]);
+
+  await assert.rejects(K.keyFileText(secret, 'short'), /at least 10/);
+  const locked = await K.keyFileText(secret, 'correct horse battery');
+  assert.ok(K.isLocked(locked) && !locked.includes(K.hex(secret)));
+  assert.notEqual(locked, await K.keyFileText(secret, 'correct horse battery')); // fresh salt each time
+  await assert.rejects(K.secretFromFile(locked), /password needed/);
+  await assert.rejects(K.secretFromFile(locked, 'wrong password!!'), /wrong password/);
+  assert.deepEqual([...(await K.secretFromFile(locked, 'correct horse battery'))], [...secret]);
+  await assert.rejects(K.secretFromFile('hello'), /isn't a DupeSort signing key/);
 });

@@ -156,7 +156,7 @@ def test_key_maker_page_and_app_accept_each_others_keys(tmp_path):
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 const html = readFileSync(process.argv[2], 'utf8');
-const ctx = { crypto: globalThis.crypto, TextEncoder, TextDecoder, Uint8Array, BigInt, Number, String, JSON, Date, Error };
+const ctx = { crypto: globalThis.crypto, TextEncoder, TextDecoder, Uint8Array, BigInt, Number, String, JSON, Date, Error, btoa, atob };
 ctx.globalThis = ctx;
 vm.runInNewContext(html.match(/<script id="core">([\s\S]*?)<\/script>/)[1], ctx);
 const K = ctx.DupeKeys;

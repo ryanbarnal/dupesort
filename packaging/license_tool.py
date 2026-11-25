@@ -32,7 +32,11 @@ SOURCE = ROOT / "dupesort" / "licensing.py"
 
 def load_secret(path: Path) -> bytes:
     try:
-        secret = bytes.fromhex(path.read_text(encoding="utf-8").strip())
+        text = path.read_text(encoding="utf-8").strip()
+        if text.startswith("DUPESORT-PRIVATE-KEY-"):
+            sys.exit(f"{path} is locked with a password. Make keys with DupeSort Key Maker "
+                     "(packaging/keymaker.py or the built app) instead.")
+        secret = bytes.fromhex(text)
     except (OSError, ValueError):
         sys.exit(f"No signing key at {path}. Run:  python packaging/license_tool.py init")
     if len(secret) != 32:
