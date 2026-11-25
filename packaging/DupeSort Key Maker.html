@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DupeSort Key Maker</title>
+<style>
+  :root { --bg:#f4f4f3; --surface:#fff; --line:#e3e3e1; --fg:#111; --muted:#6e6e6b; --soft:#ebebea; --ok:#15803d; --bad:#b42318; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0e0e0e; --surface:#161616; --line:#2a2a2a; --fg:#ededed; --muted:#8f8f8c; --soft:#262626; --ok:#4ade80; --bad:#ff7b72; color-scheme: dark; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  header svg { width: 36px; height: 36px; flex: none; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0; }
+  .lead { color: var(--muted); margin: 0 0 24px; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-bottom: 14px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 4px; display: flex; gap: 8px; align-items: center; }
+  h2 .n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--fg); color: var(--bg); font-size: 12px; }
+  p { margin: 0 0 10px; }
+  .muted { color: var(--muted); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  button, .btn { font: inherit; min-height: 34px; padding: 6px 13px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  button:hover, .btn:hover { background: var(--soft); }
+  button.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
+  button:disabled { opacity: .45; cursor: default; }
+  input[type=text], textarea { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; width: 100%; }
+  textarea { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; resize: vertical; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; overflow-wrap: anywhere; }
+  .box { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin: 10px 0; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); }
+  .warn { border-left: 3px solid var(--fg); padding: 6px 10px; background: var(--bg); margin: 10px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; border-top: 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#0a0a0a"/><g fill="none" stroke="#fff" stroke-width="14"><circle cx="198" cy="256" r="104"/><circle cx="314" cy="256" r="104"/></g></svg>
+    <h1>DupeSort Key Maker</h1>
+  </header>
+  <p class="lead">Make license keys for DupeSort. Everything happens on this computer: nothing is sent anywhere. Keep this page private.</p>
+
+  <section>
+    <h2><span class="n">1</span> Your signing key</h2>
+    <p class="muted">The secret that makes your keys genuine. Create it once, keep the file safe, and open it here whenever you make keys.</p>
+    <div class="row">
+      <button id="open" type="button">Open signing key file…</button>
+      <button id="create" type="button">Create a new signing key</button>
+      <input id="file" type="file" accept=".txt,*" hidden>
+    </div>
+    <div id="loaded" hidden>
+      <p class="ok" style="margin-top:12px">✓ Signing key loaded.</p>
+      <p>Public key (safe to share; it goes into the app):</p>
+      <div class="box mono" id="public"></div>
+      <div class="row">
+        <button id="copy-public" type="button">Copy public key</button>
+        <span class="muted" id="public-note"></span>
+      </div>
+    </div>
+    <div class="warn" id="created-warning" hidden>
+      <b>Saved as “dupesort-signing-key.txt” in your Downloads.</b> Move it somewhere safe and back it up
+      (a password manager is ideal). Never share it or put it in GitHub. Without it you can't make keys that
+      existing copies of DupeSort accept; with it, anyone can.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span> Make a key</h2>
+    <p class="muted">Type the buyer's name as it should appear in DupeSort (“Licensed to …”).</p>
+    <div class="row" style="flex-wrap:nowrap">
+      <input id="name" type="text" placeholder="e.g. Jane Doe" autocomplete="off">
+      <button id="make" class="primary" type="button" disabled>Make key</button>
+    </div>
+    <div id="made" hidden>
+      <div class="box mono" id="key"></div>
+      <div class="row">
+        <button id="copy-key" type="button">Copy key</button>
+        <a class="btn" id="email" href="#">Email it…</a>
+        <span class="muted" id="made-note"></span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span> Check a key</h2>
+    <p class="muted">Paste a key to see who it belongs to and whether it's genuine (open your signing key in step 1 first).</p>
+    <textarea id="check" rows="3" placeholder="DUPESORT-…"></textarea>
+    <p id="check-result" style="margin:8px 0 0"></p>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span> Keys you've made</h2>
+    <p class="muted">Remembered in this browser only.</p>
+    <table><thead><tr><th>Date</th><th>Name</th><th>Key</th></tr></thead><tbody id="log"></tbody></table>
+    <div class="row" style="margin-top:10px">
+      <button id="export" type="button">Save list as CSV</button>
+      <button id="clear" type="button">Clear list</button>
+    </div>
+  </section>
+</main>
+<script id="core">
+(() => {
+// Ed25519 (RFC 8032) and DupeSort license keys, the same as dupesort/licensing.py.
+// Pure JavaScript with BigInt; SHA-512 comes from the browser (or Node) Web Crypto API.
+
+const p = 2n ** 255n - 19n;
+const q = 2n ** 252n + 27742317777372353535851937790883648493n;
+const mod = (a, m = p) => ((a % m) + m) % m;
+
+function powmod(b, e, m = p) {
+  let r = 1n;
+  b = mod(b, m);
+  while (e > 0n) {
+    if (e & 1n) r = (r * b) % m;
+    b = (b * b) % m;
+    e >>= 1n;
+  }
+  return r;
+}
+
+const d = mod(-121665n * powmod(121666n, p - 2n));
+const sqrtM1 = powmod(2n, (p - 1n) / 4n);
+
+function add(P, Q) {
+  const A = mod((P[1] - P[0]) * (Q[1] - Q[0])), B = mod((P[1] + P[0]) * (Q[1] + Q[0]));
+  const C = mod(2n * P[3] * Q[3] * d), D = mod(2n * P[2] * Q[2]);
+  const E = B - A, F = D - C, G = D + C, H = B + A;
+  return [mod(E * F), mod(G * H), mod(F * G), mod(E * H)];
+}
+
+function mul(s, P) {
+  let Q = [0n, 1n, 1n, 0n];
+  while (s > 0n) {
+    if (s & 1n) Q = add(Q, P);
+    P = add(P, P);
+    s >>= 1n;
+  }
+  return Q;
+}
+
+function recoverX(y, sign) {
+  if (y >= p) return null;
+  const x2 = mod((y * y - 1n) * powmod(d * y * y + 1n, p - 2n));
+  if (x2 === 0n) return sign ? null : 0n;
+  let x = powmod(x2, (p + 3n) / 8n);
+  if (mod(x * x - x2) !== 0n) x = mod(x * sqrtM1);
+  if (mod(x * x - x2) !== 0n) return null;
+  if (Number(x & 1n) !== sign) x = p - x;
+  return x;
+}
+
+const gy = mod(4n * powmod(5n, p - 2n));
+const gx = recoverX(gy, 0);
+const G = [gx, gy, 1n, mod(gx * gy)];
+
+const toLE = (n, len = 32) => {
+  const out = new Uint8Array(len);
+  for (let i = 0; i < len; i++, n >>= 8n) out[i] = Number(n & 255n);
+  return out;
+};
+const fromLE = (b) => b.reduceRight((acc, x) => (acc << 8n) | BigInt(x), 0n);
+
+function compress(P) {
+  const zinv = powmod(P[2], p - 2n);
+  const x = mod(P[0] * zinv), y = mod(P[1] * zinv);
+  return toLE(y | ((x & 1n) << 255n));
+}
+
+function decompress(s) {
+  if (s.length !== 32) return null;
+  let y = fromLE(s);
+  const sign = Number(y >> 255n);
+  y &= (1n << 255n) - 1n;
+  const x = recoverX(y, sign);
+  return x === null ? null : [x, y, 1n, mod(x * y)];
+}
+
+function equal(P, Q) {
+  return mod(P[0] * Q[2] - Q[0] * P[2]) === 0n && mod(P[1] * Q[2] - Q[1] * P[2]) === 0n;
+}
+
+const concat = (...parts) => {
+  const out = new Uint8Array(parts.reduce((n, x) => n + x.length, 0));
+  let o = 0;
+  for (const x of parts) {
+    out.set(x, o);
+    o += x.length;
+  }
+  return out;
+};
+
+async function sha512(bytes) {
+  return new Uint8Array(await crypto.subtle.digest('SHA-512', bytes));
+}
+
+async function expand(secret) {
+  const h = await sha512(secret);
+  let a = fromLE(h.slice(0, 32));
+  a &= (1n << 254n) - 8n;
+  a |= 1n << 254n;
+  return [a, h.slice(32)];
+}
+
+const modq = async (bytes) => mod(fromLE(await sha512(bytes)), q);
+
+async function publicKeyOf(secret) {
+  const [a] = await expand(secret);
+  return compress(mul(a, G));
+}
+
+async function sign(secret, message) {
+  const [a, prefix] = await expand(secret);
+  const A = compress(mul(a, G));
+  const r = await modq(concat(prefix, message));
+  const Rs = compress(mul(r, G));
+  const s = mod(r + (await modq(concat(Rs, A, message))) * a, q);
+  return concat(Rs, toLE(s));
+}
+
+async function verify(publicKey, message, signature) {
+  if (publicKey.length !== 32 || signature.length !== 64) return false;
+  const A = decompress(publicKey), R = decompress(signature.slice(0, 32));
+  if (!A || !R) return false;
+  const s = fromLE(signature.slice(32));
+  if (s >= q) return false;
+  const h = await modq(concat(signature.slice(0, 32), publicKey, message));
+  return equal(mul(s, G), add(R, mul(h, A)));
+}
+
+// --- DupeSort license keys ---------------------------------------------------------------------
+
+const hex = (b) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+function unhex(text) {
+  const t = (text || '').trim().toLowerCase();
+  if (!/^([0-9a-f]{2})+$/.test(t)) return null;
+  return new Uint8Array(t.match(/../g).map((x) => parseInt(x, 16)));
+}
+
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function base32(bytes) {
+  let bits = 0, value = 0, out = '';
+  for (const b of bytes) {
+    value = (value << 8) | b;
+    bits += 8;
+    while (bits >= 5) {
+      out += B32[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) out += B32[(value << (5 - bits)) & 31];
+  return out;
+}
+function unbase32(text) {
+  let bits = 0, value = 0;
+  const out = [];
+  for (const ch of text) {
+    const i = B32.indexOf(ch);
+    if (i < 0) return null;
+    value = (value << 5) | i;
+    bits += 5;
+    if (bits >= 8) {
+      out.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return new Uint8Array(out);
+}
+
+const PREFIX = 'DUPESORT';
+
+/** Same as licensing.make_key: payload {"v":1,"n":name,"d":date} + Ed25519 signature. */
+async function makeKey(secret, name, issued) {
+  const date = issued || new Date().toISOString().slice(0, 10);
+  const payload = new TextEncoder().encode(JSON.stringify({ v: 1, n: name.trim(), d: date }));
+  if (payload.length > 255) throw new Error('The name is too long for a key.');
+  const raw = concat(new Uint8Array([payload.length]), payload, await sign(secret, payload));
+  const text = base32(raw);
+  return `${PREFIX}-${text.match(/.{1,5}/g).join('-')}`;
+}
+
+/** Same as licensing.read_key: {name, issued} for a genuine key, else null. */
+async function readKey(text, publicKey) {
+  let clean = (text || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (clean.startsWith(PREFIX)) clean = clean.slice(PREFIX.length);
+  const raw = unbase32(clean);
+  if (!raw || raw.length < 66) return null;
+  const n = raw[0];
+  const payload = raw.slice(1, 1 + n), signature = raw.slice(1 + n);
+  if (!(await verify(publicKey, payload, signature))) return null;
+  try {
+    const data = JSON.parse(new TextDecoder().decode(payload));
+    return { name: String(data.n ?? ''), issued: String(data.d ?? '') };
+  } catch {
+    return null;
+  }
+}
+
+globalThis.DupeKeys = { publicKeyOf, sign, verify, hex, unhex, PREFIX, makeKey, readKey };
+})();
+</script>
+<script>
+(() => {
+  const K = globalThis.DupeKeys;
+  const $ = (s) => document.querySelector(s);
+  let secret = null, publicKey = null;
+  const LOG = 'dupesort-keymaker-log';
+
+  const readLog = () => { try { return JSON.parse(localStorage.getItem(LOG) || '[]'); } catch { return []; } };
+  const writeLog = (rows) => { try { localStorage.setItem(LOG, JSON.stringify(rows)); } catch {} };
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+  function renderLog() {
+    const rows = readLog();
+    $('#log').innerHTML = rows.length
+      ? rows.slice().reverse().map((r) => `<tr><td>${esc(r.date)}</td><td>${esc(r.name)}</td><td class="mono">${esc(r.key)}</td></tr>`).join('')
+      : '<tr><td colspan="3" class="muted">No keys yet.</td></tr>';
+  }
+
+  async function useSecret(bytes, created) {
+    secret = bytes;
+    publicKey = await K.publicKeyOf(secret);
+    $('#public').textContent = K.hex(publicKey);
+    $('#loaded').hidden = false;
+    $('#created-warning').hidden = !created;
+    $('#make').disabled = !$('#name').value.trim();
+    $('#public-note').textContent = created
+      ? 'Send this public key to put into DupeSort (dupesort/licensing.py), then release a new version.'
+      : '';
+    checkKey();
+  }
+
+  function download(name, text, type = 'text/plain') {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  $('#create').addEventListener('click', async () => {
+    if (secret && !confirm('A signing key is already loaded. Create a different one? Keys made with the new one only work after its public key is in DupeSort.')) return;
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    download('dupesort-signing-key.txt', K.hex(bytes) + '\n');
+    await useSecret(bytes, true);
+  });
+  $('#open').addEventListener('click', () => $('#file').click());
+  $('#file').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const bytes = K.unhex((await f.text()).trim());
+    if (!bytes || bytes.length !== 32) {
+      alert("That file isn't a DupeSort signing key (it should hold 64 hexadecimal characters).");
+      return;
+    }
+    await useSecret(bytes, false);
+  });
+  $('#copy-public').addEventListener('click', () => navigator.clipboard.writeText($('#public').textContent));
+
+  $('#name').addEventListener('input', () => { $('#make').disabled = !secret || !$('#name').value.trim(); });
+  $('#name').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !$('#make').disabled) $('#make').click(); });
+  $('#make').addEventListener('click', async () => {
+    const name = $('#name').value.trim();
+    let key;
+    try {
+      key = await K.makeKey(secret, name);
+    } catch (err) {
+      alert(err.message);
+      return;
+    }
+    const check = await K.readKey(key, publicKey);
+    if (!check || check.name !== name) {
+      alert('Something went wrong making that key. Please try again.');
+      return;
+    }
+    $('#key').textContent = key;
+    $('#made').hidden = false;
+    $('#made-note').textContent = `For ${name}`;
+    const subject = encodeURIComponent('Your DupeSort license key');
+    const body = encodeURIComponent(
+      `Hello ${name},\n\nThank you for buying DupeSort! Here is your license key:\n\n${key}\n\n` +
+      'To activate: open DupeSort, choose Help > Activate DupeSort… (or click the trial button at the ' +
+      'bottom of the sidebar), paste the key and press Activate.\n\nThe key works offline and stays ' +
+      'activated when DupeSort updates. Please keep this email.\n');
+    $('#email').href = `mailto:?subject=${subject}&body=${body}`;
+    const rows = readLog();
+    rows.push({ date: new Date().toISOString().slice(0, 10), name, key });
+    writeLog(rows);
+    renderLog();
+  });
+  $('#copy-key').addEventListener('click', () => navigator.clipboard.writeText($('#key').textContent));
+
+  async function checkKey() {
+    const text = $('#check').value.trim();
+    const out = $('#check-result');
+    if (!text) { out.textContent = ''; return; }
+    if (!publicKey) { out.innerHTML = '<span class="muted">Open your signing key first (step 1).</span>'; return; }
+    const lic = await K.readKey(text, publicKey);
+    out.innerHTML = lic
+      ? `<span class="ok">✓ Genuine.</span> Licensed to <b>${esc(lic.name)}</b>, made ${esc(lic.issued)}.`
+      : '<span class="bad">✗ Not a genuine key</span> (or it was made with a different signing key).';
+  }
+  $('#check').addEventListener('input', checkKey);
+
+  $('#export').addEventListener('click', () => {
+    const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const rows = readLog();
+    download('DupeSort keys.csv', '﻿' + [['Date', 'Name', 'Key'], ...rows.map((r) => [r.date, r.name, r.key])].map((r) => r.map(q).join(',')).join('\r\n') + '\r\n', 'text/csv');
+  });
+  $('#clear').addEventListener('click', () => {
+    if (confirm('Clear the list of keys made in this browser? The keys themselves keep working.')) { writeLog([]); renderLog(); }
+  });
+
+  renderLog();
+  window.keymaker = { useSecret, get publicKey() { return publicKey; } };  // for tests
+})();
+</script>
+</body>
+</html>

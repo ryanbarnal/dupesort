@@ -140,3 +140,39 @@ def test_license_tool(tmp_path):
     assert out.returncode == 0, out.stderr
     key = next(line for line in out.stdout.splitlines() if line.startswith("DUPESORT-"))
     assert L.read_key(key, public_hex=public).name == "Jane Doe"
+
+
+def test_key_maker_page_and_app_accept_each_others_keys(tmp_path):
+    """Keys made by packaging/DupeSort Key Maker.html activate the app, and the page accepts
+    keys made by the app's own code (the Python tool)."""
+    import shutil
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js not installed")
+    root = Path(__file__).resolve().parent.parent
+    script = tmp_path / "km.mjs"
+    script.write_text(r"""
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+const html = readFileSync(process.argv[2], 'utf8');
+const ctx = { crypto: globalThis.crypto, TextEncoder, TextDecoder, Uint8Array, BigInt, Number, String, JSON, Date, Error };
+ctx.globalThis = ctx;
+vm.runInNewContext(html.match(/<script id="core">([\s\S]*?)<\/script>/)[1], ctx);
+const K = ctx.DupeKeys;
+const [, , , mode, secretHex, arg] = process.argv;
+const secret = K.unhex(secretHex);
+if (mode === 'make') console.log(await K.makeKey(secret, arg, '2026-11-25'));
+else console.log(JSON.stringify(await K.readKey(arg, await K.publicKeyOf(secret))));
+""", encoding="utf-8")
+    page = str(root / "packaging" / "DupeSort Key Maker.html")
+    run = lambda *a: subprocess.run([node, str(script), page, *a], capture_output=True,
+                                    text=True, check=True).stdout.strip()
+    # Page -> app (byte-for-byte the same key as the Python code makes).
+    js_key = run("make", SECRET.hex(), "Jane Doe")
+    assert js_key == L.make_key(SECRET, "Jane Doe", "2026-11-25")
+    assert L.read_key(js_key, public_hex=PUBLIC).name == "Jane Doe"
+    # App -> page.
+    py_key = L.make_key(SECRET, "Ryan Ocbina Barnal", "2026-11-25")
+    assert json.loads(run("read", SECRET.hex(), py_key)) == {
+        "name": "Ryan Ocbina Barnal", "issued": "2026-11-25"}
