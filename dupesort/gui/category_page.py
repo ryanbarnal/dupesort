@@ -348,6 +348,8 @@ class CategoryPage(QWidget):
             t.progress(0, len(files), f"Comparing {len(files)} files…")
             groups = find(files, settings, progress=t.progress, cancelled=t.cancelled)
             choose_keepers(groups, settings.keep_strategy, quality)
+            if self.category == "music":
+                music.prefer_converted(groups)
             return files, groups, t.cancelled()
 
         self.run_task("Scanning…", job, self._scan_done)

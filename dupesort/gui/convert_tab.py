@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from ..convert import audio, images, pdf, upscale, video
 from ..convert.ffmpeg import ConversionError
+from ..core.history import Session
 from ..core.scanner import CATEGORY_EXTENSIONS
 from ..tools import find_tool
 from . import icons
@@ -205,6 +206,8 @@ class ConvertTab(QWidget):
             return
         if not self.preflight():
             return
+        # Measured now: an original converted in place is replaced by its new version.
+        self._before = sum(p.stat().st_size for p in files if p.exists())
 
         def job(t):
             outputs, errors, steps = [], [], 1000
@@ -231,7 +234,10 @@ class ConvertTab(QWidget):
     def _done(self, result) -> None:
         files, outputs, errors = result
         self.last_outputs = outputs
-        before = sum(p.stat().st_size for p in files if p.exists())
+        session = getattr(self, "_session", None)
+        if session is not None and session.ops:
+            self.page.history_changed.emit()
+        before = getattr(self, "_before", 0)
         after = sum(p.stat().st_size for p in outputs if p.exists())
         text = f"Created {len(outputs)} file{'s' * (len(outputs) != 1)}"
         if outputs and before:
@@ -293,9 +299,13 @@ class AudioConvertTab(ConvertTab):
 
     def read_options(self, out_dir):
         rate = {"Keep": 0, "44100 Hz (CD)": 44100, "48000 Hz": 48000}[self.rate.currentText()]
+        # Songs converted to the same format in the same folder replace their originals;
+        # those moves go into History so they can be undone.
+        self._session = Session("Converted songs (originals moved to _Converted)")
         return audio.AudioOptions(self.fmt.currentText(),
                                   int(self.bitrate.currentText().split()[0]),
-                                  self.no_up.isChecked(), rate, self.mono.isChecked(), out_dir)
+                                  self.no_up.isChecked(), rate, self.mono.isChecked(), out_dir,
+                                  self._session)
 
     def convert_one(self, path, opts, frac, cancelled):
         return [audio.convert_audio(path, opts, frac, cancelled)]

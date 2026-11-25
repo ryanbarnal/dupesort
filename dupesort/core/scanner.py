@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Callable, Iterable, Optional
 
 DUPLICATES_DIR = "_Duplicates"
+# Originals that a conversion replaced in place (see convert.audio); never scanned.
+CONVERTED_DIR = "_Converted"
 
 CATEGORY_EXTENSIONS = {
     "music": {
@@ -30,7 +32,7 @@ CATEGORY_EXTENSIONS = {
 
 # Folders that never contain user media and are expensive to walk.
 SKIP_DIRS = {
-    DUPLICATES_DIR, ".git", ".svn", "node_modules", "__pycache__", ".Trash",
+    DUPLICATES_DIR, CONVERTED_DIR, ".git", ".svn", "node_modules", "__pycache__", ".Trash",
     "$RECYCLE.BIN", "System Volume Information", ".venv",
 }
 

@@ -166,10 +166,41 @@ def _same_sound(files: list[FileEntry], threshold: float, progress: Progress,
     return pairs  # merge_groups joins overlapping pairs into clusters
 
 
+def _converted_pairs(files: list[FileEntry]) -> list[list[FileEntry]]:
+    """Originals found together with a copy DupeSort converted from them."""
+    from ..convert import _key, conversions
+
+    by_key = {_key(f.path): f for f in files}
+    pairs = []
+    for src, dst in conversions():
+        a, b = by_key.get(src), by_key.get(dst)
+        if a is not None and b is not None and a is not b:
+            pairs.append([a, b])
+    return pairs
+
+
+def prefer_converted(groups: list[DuplicateGroup]) -> None:
+    """In groups holding an original and the copy DupeSort converted from it, keep the
+    converted copy: that's the version you made on purpose."""
+    from ..convert import _key, conversions
+
+    pairs = conversions()
+    if not pairs:
+        return
+    converted = {dst for _, dst in pairs}
+    originals = {src for src, _ in pairs}
+    for g in groups:
+        keys = [_key(f.path) for f in g.files]
+        new = {i for i, k in enumerate(keys) if k in converted}
+        if new and any(k in originals for k in keys):
+            g.keep = new
+
+
 def find_duplicates(files: list[FileEntry], settings: Settings, progress: Progress = None,
                     cancelled: Callable[[], bool] = lambda: False) -> list[DuplicateGroup]:
     load_info(files, progress, cancelled)
-    found = [("Identical file", find_exact_duplicates(files, cancelled=cancelled))]
+    found = [("Identical file", find_exact_duplicates(files, cancelled=cancelled)),
+             ("Converted copy", _converted_pairs(files))]
     if settings.music_match_by_tags:
         found.append(("Same artist & title",
                       _same_tags(files, settings.music_separate_versions)))
