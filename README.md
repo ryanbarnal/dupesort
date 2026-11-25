@@ -30,7 +30,7 @@ Each section has a convert tab. Originals are never changed; new files are saved
 
 | | Converts |
 |---|---|
-| **Music → Convert** | MP3, AAC/M4A, Opus, Ogg Vorbis, FLAC, ALAC or WAV, at 64–320 kbps. Never raises the bitrate above the source (optional). Tags, lyrics and cover art are copied over. |
+| **Music → Convert** | MP3, AAC/M4A, Opus, Ogg Vorbis, FLAC, ALAC or WAV, at 64–320 kbps. Never raises the bitrate above the source (optional). Tags, lyrics and cover art are copied over. Converted songs keep the original name; same format in the same folder replaces the original (which moves to `_Converted`, undoable). Later scans keep the converted copy and offer the original as the duplicate. |
 | **Photos → Convert & resize** | JPEG, PNG or WebP (HEIC input supported). Quality slider, fit-within-pixels, percent scaling, PNG colour reduction, and removing camera/GPS data. Upscale 2×/4× with simple Lanczos + sharpening, or with **AI** (Real-ESRGAN, downloaded once on first use, ~50 MB). |
 | **Videos → Convert & resize** | MP4, MOV, MKV, WebM or AVI. H.264, H.265, VP9 or AV1. Resolution 360p–4K. Aspect ratios 16:9, 9:16, 1:1, 4:5, 4:3 and 21:9, with fit (bars), fill (crop) or stretch. Quality presets from "High" to "Small file". |
 | **Documents → PDF tools** | Images → PDF, PDF → images, Word/Excel/PowerPoint → PDF (needs LibreOffice, or Microsoft Office on Windows), PDF → text, merge PDFs, compress PDFs. |

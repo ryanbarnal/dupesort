@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -42,7 +43,8 @@ def test_audio_bitrate_never_raised_above_source(tmp_path):
     src = make_wav(tmp_path / "s.wav", seconds=3, rate=44100)
     low = audio.convert_audio(src, audio.AudioOptions(fmt="MP3", bitrate=96))
     high = audio.convert_audio(low, audio.AudioOptions(fmt="MP3", bitrate=320))
-    assert high.name == "s (96k).mp3"  # same format -> a bitrate suffix, no overwrite
+    # Same format, same folder: the new file takes the name; the original goes to _Converted.
+    assert high == low and (tmp_path / "_Converted" / "s.mp3").exists()
     assert audio_info(high)["bitrate"] // 1000 <= 112
 
 
@@ -121,3 +123,80 @@ def test_pdf_round_trip_merge_text_compress(tmp_path):
 
     text = pdf.pdf_to_text(doc)
     assert "--- Page 2 ---" in text.read_text()
+
+
+def _song(path, bitrate="320k"):
+    import shutil
+    import subprocess
+
+    from conftest import make_wav
+
+    from dupesort.music.tags import write_tags
+
+    if not shutil.which("ffmpeg"):
+        pytest.skip("FFmpeg not installed")
+    wav = make_wav(path.with_suffix(".wav"), seconds=2.0, rate=44100)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(wav), "-b:a", bitrate, str(path)],
+                   check=True)
+    wav.unlink()
+    write_tags(path, {"artist": "Kansas", "title": "Dust In The Wind"})
+    return path
+
+
+def test_music_convert_names_have_no_bitrate_suffix(tmp_path):
+    from dupesort.convert import audio, conversions
+
+    src = _song(tmp_path / "Music" / "Kansas - Dust In The Wind.mp3")
+    out = tmp_path / "Converted"
+    dst = audio.convert_audio(src, audio.AudioOptions("MP3", 128, out_dir=out))
+    assert dst == out / "Kansas - Dust In The Wind.mp3"  # same name, no "(128k)"
+    assert sorted(p.name for p in out.iterdir()) == [dst.name]  # just the converted file
+    assert src.exists()  # the original stays where it was
+    assert [os.path.basename(p) for p in conversions()[-1]] == [src.name, dst.name]
+
+
+def test_music_convert_in_place_replaces_the_original_with_undo(tmp_path):
+    from dupesort.convert import audio, conversions
+    from dupesort.core.history import Session
+    from dupesort.music.tags import audio_info, read_tags
+
+    src = _song(tmp_path / "Music" / "Song.mp3", "320k")
+    session = Session("Converted songs")
+    dst = audio.convert_audio(src, audio.AudioOptions("MP3", 128, session=session))
+    folder = tmp_path / "Music"
+    assert dst == src and src.exists()  # the converted file has the original's name…
+    assert audio_info(src)["bitrate"] < 200_000  # …and is the 128 kbps version
+    assert read_tags(src)["title"] == "Dust In The Wind"
+    original = folder / "_Converted" / "Song.mp3"
+    assert original.exists() and audio_info(original)["bitrate"] > 250_000
+    assert sorted(p.name for p in folder.iterdir()) == ["Song.mp3", "_Converted"]
+    assert conversions()[-1] == [os.path.normcase(str(original)), os.path.normcase(str(src))]
+
+    assert session.undo() == []  # Undo in History puts the original back
+    assert audio_info(src)["bitrate"] > 250_000
+    assert (folder / "_Converted" / "Song (new).mp3").exists()  # the converted copy is kept aside
+
+
+def test_scan_keeps_the_converted_copy_and_offers_the_original(tmp_path):
+    from dupesort.convert import audio
+    from dupesort.core.duplicates import choose_keepers
+    from dupesort.core.scanner import scan
+    from dupesort.music import organizer
+    from dupesort.settings import Settings
+
+    lib = tmp_path / "Library"
+    src = _song(lib / "FLAC" / "Song.mp3", "320k")
+    dst = audio.convert_audio(src, audio.AudioOptions("MP3", 96, out_dir=lib / "Phone"))
+    # Something in _Converted is never scanned.
+    (lib / "_Converted").mkdir()
+    (lib / "_Converted" / "old.mp3").write_bytes(src.read_bytes())
+
+    files = scan([lib], "music")
+    assert sorted(f.path.name for f in files) == ["Song.mp3", "Song.mp3"]
+    groups = organizer.find_duplicates(files, Settings(music_match_by_fingerprint=False))
+    choose_keepers(groups, "best", organizer.quality)  # "best" alone would keep the 320k original
+    organizer.prefer_converted(groups)
+    [g] = groups
+    assert "Converted copy" in g.reason
+    assert [g.files[i].path for i in g.keep] == [dst]
+    assert [f.path for f in g.duplicates] == [src]

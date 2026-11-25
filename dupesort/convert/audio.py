@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from ..music.tags import LOSSLESS, audio_info, read_cover, read_tags, write_tags
-from . import output_path
+from ..core.history import Session, unique_path
+from ..core.scanner import CONVERTED_DIR
+from . import output_path, record_conversion
 from .ffmpeg import ConversionError, convert, pick_encoder, remove_partial
 
 # name: (extension, encoders to try, uses a bitrate)
@@ -31,6 +33,8 @@ class AudioOptions:
     sample_rate: int = 0  # 0 = keep
     mono: bool = False
     out_dir: Optional[Path] = None
+    # History session for replacing originals in place (so it can be undone).
+    session: Optional[Session] = None
 
 
 def convert_audio(src: Path, opts: AudioOptions,
@@ -55,13 +59,25 @@ def convert_audio(src: Path, opts: AudioOptions,
         args += ["-ar", str(opts.sample_rate)]
     if opts.mono:
         args += ["-ac", "1"]
-    suffix = f" ({kbps}k)" if lossy and opts.out_dir is None and src.suffix.lower() == "." + ext \
-        else ""
-    dst = output_path(src, ext, opts.out_dir, suffix)
+    folder = Path(opts.out_dir) if opts.out_dir else src.parent
+    # Same folder and same format: the converted file takes the original's name and place.
+    # It's made in _Converted first; the original then moves into _Converted (History can
+    # undo both), so nothing is lost and the names stay clean.
+    replace = (folder / f"{src.stem}.{ext}").resolve() == src.resolve()
+    if replace:
+        dst = unique_path(src.parent / CONVERTED_DIR / f"{src.stem} (new).{ext}")
+        dst.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        dst = output_path(src, ext, opts.out_dir)
     try:
         convert(args + [str(dst)], info["duration"], progress, cancelled)
     except ConversionError:
         remove_partial(dst)
+        if replace:
+            try:
+                dst.parent.rmdir()  # only if it is empty
+            except OSError:
+                pass
         raise
     # Copy tags, lyrics and cover art with mutagen (FFmpeg loses some of them).
     try:
@@ -71,6 +87,13 @@ def convert_audio(src: Path, opts: AudioOptions,
             write_tags(dst, tags, cover=cover)
     except Exception:
         pass  # the audio itself converted fine; tags are best effort
+    if replace:
+        session = opts.session or Session(f"Converted {src.name}")
+        original = session.move(src, src.parent / CONVERTED_DIR / src.name)
+        dst = session.move(dst, src)
+        record_conversion(original, dst)
+    else:
+        record_conversion(src, dst)
     return dst
 
 
