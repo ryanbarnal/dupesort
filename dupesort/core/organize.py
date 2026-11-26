@@ -68,3 +68,46 @@ def apply_moves(moves: list[tuple[FileEntry, Path]], session: Session,
         if progress:
             progress(n, len(moves), f.path.name)
     return errors
+
+
+# --- capital letters in file names -------------------------------------------------------------
+
+CAPITALIZE_STYLES = {
+    "words": "Capitalize Each Word",
+    "words_lower": "Each Word, rest lower case",
+    "first": "First letter only",
+}
+
+
+def capitalize(name: str, style: str = "words") -> str:
+    """``name`` (without its extension) with capital letters as ``style`` says.
+
+    A word starts at a letter that follows the start, a space or punctuation, but not an
+    apostrophe or a digit, so "don't" becomes "Don't" (not "Don'T") and "3rd" stays "3rd".
+    """
+    if style == "first":
+        for i, ch in enumerate(name):
+            if ch.isalpha():
+                return name[:i] + ch.upper() + name[i + 1:]
+        return name
+    out, prev = [], ""
+    for ch in name:
+        starts_word = ch.isalpha() and not (prev.isalnum() or (prev and prev in "'’"))
+        if starts_word:
+            out.append(ch.upper())
+        elif style == "words_lower" and ch.isalpha():
+            out.append(ch.lower())
+        else:
+            out.append(ch)
+        prev = ch
+    return "".join(out)
+
+
+def plan_capitalize(files: list[FileEntry], style: str = "words") -> list[tuple[FileEntry, Path]]:
+    """The files whose names change, with their new paths (extensions are left alone)."""
+    plan = []
+    for f in files:
+        new = capitalize(f.path.stem, style)
+        if new != f.path.stem:
+            plan.append((f, f.path.with_name(new + f.path.suffix)))
+    return plan

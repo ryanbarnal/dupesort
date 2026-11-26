@@ -13,13 +13,14 @@ The full user guide is in the app (**Help → DupeSort User Guide**) and at [`du
 | **Music** | identical file · same artist + title + length · same *sound* (Chromaprint fingerprint, catches MP3 vs FLAC copies) | Looks up title, artist, album, album artist, genre, year, track number and cover art (MusicBrainz), plus lyrics (LRCLIB). Lyrics are embedded in the file. Files are renamed in place to `Artist - Title` (the pattern is editable). |
 | **Photos** | identical file · visually similar (perceptual hash; catches resized and re-saved copies) | Moves photos into `YYYY/MM` folders by the date taken (EXIF). |
 | **Videos** | identical file · same video re-encoded (frame fingerprints, needs FFmpeg) | `YYYY/MM` date folders. Renames movies to `Title (Year)` and episodes to `Show - S01E02 - Name` using TMDb. |
-| **Documents** | identical file · same text in different files or formats (e.g. a `.docx` and its `.pdf`) | Sorts into PDF / Word / Spreadsheets / Presentations / Text / eBooks folders. |
+| **Documents** | identical file (including AutoCAD `.dwg`/`.dxf`) · same text in different files or formats (e.g. a `.docx` and its `.pdf`); two PDFs must also look the same, so different drawings with the same title block don't match | Sorts into PDF / Word / Spreadsheets / Presentations / Text / eBooks / Drawings folders. |
 
 **How it works:**
 - In each duplicate group the app ticks the best copy to keep: highest quality (bitrate, lossless, resolution), or the oldest, newest or shortest path. You can change any tick.
 - **Move duplicates** relocates the unticked copies to `<scanned folder>/_Duplicates/<original sub-folder>/`.
 - **Music lookups:** matches at or above the confidence threshold (default 90%) are ticked automatically. Orange rows need review: pick another online match from the dropdown, or type the details yourself.
 - **History:** every move, rename and tag change is logged and can be undone.
+- **Capitalize names:** every section can give file names capital first letters (Each Word, Each Word with the rest lower case, or First letter only), with a preview and Undo.
 - **Versions stay apart:** live, acoustic, unplugged, remix, demo and other versions of a song are not treated as duplicates of the studio take. The version is read from the title, file name, album, genre and folder name (on by default; *Keep versions apart* on the Music page).
 - **Picks up where you left off:** scan results (with your ticks), tag lookups, convert lists and the open page come back when you reopen the app. Files changed or moved since are left out. Saved as you go; turn off in Settings.
 - **Automatic updates:** DupeSort checks GitHub releases at start-up and every 6 hours. Windows installs the update and restarts; macOS and Linux download it and show it. *Help → Check for updates…* checks on demand.

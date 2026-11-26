@@ -272,7 +272,13 @@ def test_reopens_where_you_left_off(app, tmp_path, monkeypatch):
     page.tree.set_groups(page.groups)
     page.tag_tab.restore_state([Proposal(files[0].path, {"title": "x"}, 1.0,
                                          [Match(70, {"title": "Song"})], apply=True)])
-    convert = page.tabs.widget(2)
+    from dupesort.gui.convert_tab import AudioConvertTab
+
+    def convert_tab(pg):
+        return next(pg.tabs.widget(i) for i in range(pg.tabs.count())
+                    if isinstance(pg.tabs.widget(i), AudioConvertTab))
+
+    convert = convert_tab(page)
     convert.files.add([files[0].path])
     page.tabs.setCurrentIndex(1)
     w.nav.setCurrentRow(0)
@@ -290,7 +296,7 @@ def test_reopens_where_you_left_off(app, tmp_path, monkeypatch):
     assert p2.tree.topLevelItemCount() == 1
     assert len(p2.tag_tab.proposals) == 1 and p2.tag_tab.table.rowCount() == 1
     assert p2.tag_tab.proposals[0].apply
-    assert p2.tabs.widget(2).files.paths() == [files[0].path]
+    assert convert_tab(p2).files.paths() == [files[0].path]
     assert "closed during" in p2.status.text() and "Looking up songs online" in p2.status.text()
     # Other pages had nothing to restore.
     assert w2.pages[1][2].groups == []
@@ -299,3 +305,42 @@ def test_reopens_where_you_left_off(app, tmp_path, monkeypatch):
     w2.settings.restore_session = False
     w2.settings.save()
     assert MainWindow().pages[0][2].groups == []
+
+
+def test_capitalize_names_section(app, tmp_path, monkeypatch):
+    import time
+
+    from PySide6.QtWidgets import QMessageBox
+
+    from dupesort.core.scanner import scan
+    from dupesort.gui.main_window import MainWindow
+    from dupesort.gui.organize_tab import CapitalizeTab
+
+    w = MainWindow()
+    for _, _, page in w.pages[:4]:  # Music, Photos, Videos, Documents
+        tabs = [page.tabs.widget(i) for i in range(page.tabs.count())]
+        assert any(isinstance(t, CapitalizeTab) for t in tabs)
+        assert "Capitalize names" in [page.tabs.tabText(i) for i in range(page.tabs.count())]
+
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    (lib / "dust in the wind.mp3").write_bytes(b"x" * 10)
+    (lib / "Fine Name.mp3").write_bytes(b"y" * 10)
+    page = w.pages[0][2]
+    page.files = scan([lib], "music")
+    tab = next(page.tabs.widget(i) for i in range(page.tabs.count())
+               if isinstance(page.tabs.widget(i), CapitalizeTab))
+
+    def wait():
+        end = time.time() + 10
+        while page.task is not None and time.time() < end:
+            app.processEvents()
+
+    tab.preview()
+    wait()
+    assert tab.table.rowCount() == 1 and tab.table.item(0, 3).text() == "Dust In The Wind.mp3"
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)
+    tab.apply()
+    wait()
+    assert sorted(p.name for p in lib.iterdir()) == ["Dust In The Wind.mp3", "Fine Name.mp3"]
+    w.close()

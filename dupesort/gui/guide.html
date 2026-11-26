@@ -63,7 +63,7 @@ Each section works the same way:</p>
   <tr><td>Same sound</td><td>The same recording identified by its audio fingerprint, even in a different format or bitrate (e.g. an MP3 and a FLAC).</td></tr>
   <tr><td>Similar image</td><td>The same photo resized, re-saved or slightly edited.</td></tr>
   <tr><td>Same video</td><td>The same video re-encoded at another size or quality.</td></tr>
-  <tr><td>Same text</td><td>Documents with the same text, e.g. a Word file and its PDF.</td></tr>
+  <tr><td>Same text</td><td>Documents with the same text, e.g. a Word file and its PDF. Two PDFs must also look the same (first page and number of pages), so different drawings that share a title block aren't matched; short documents such as drawings and forms must have exactly the same text. AutoCAD files (.dwg, .dxf) are matched only when identical.</td></tr>
 </table>
 <p><b>Ticked files are kept.</b> DupeSort ticks the best copy in each group: the highest
 quality (lossless audio, higher bitrate, larger resolution), preferring originals over files
@@ -120,6 +120,18 @@ and free API keys</a>).</p>
 <h2 id="documents">6. Documents: sorting by type</h2>
 <p><b>Documents → Sort by type</b> moves files into PDF, Word, Spreadsheets, Presentations,
 Text and eBooks folders.</p>
+
+<h3 id="capitalize">Capital letters in file names</h3>
+<p>Music, Photos, Videos and Documents each have a <b>Capitalize names</b> section. Scan first,
+choose a style and press <b>Preview changes</b>:</p>
+<ul>
+  <li><b>Capitalize Each Word</b>: “kansas - dust in the wind.mp3” becomes “Kansas - Dust In The
+      Wind.mp3”. Other letters stay as they are, so names like iPod or McCartney keep theirs.</li>
+  <li><b>Each Word, rest lower case</b>: also turns “DUST IN THE WIND” into “Dust In The Wind”.</li>
+  <li><b>First letter only</b>: “dust in the wind” becomes “Dust in the wind”.</li>
+</ul>
+<p>Untick any you want to leave, then press <b>Rename ticked</b>. Only the names change (not the
+extension or folder), and <b>Undo</b> in History puts the old names back.</p>
 
 <h2 id="convert">7. Converting files</h2>
 <p>Every section has a converter tab. Add files with the buttons, by dragging them in, or

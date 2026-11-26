@@ -18,7 +18,7 @@ export const CATEGORIES = {
   },
   documents: {
     label: 'Documents',
-    exts: ['pdf', 'doc', 'docx', 'odt', 'rtf', 'txt', 'md', 'xls', 'xlsx', 'ods', 'csv', 'ppt', 'pptx', 'odp', 'epub', 'pages', 'numbers', 'key'],
+    exts: ['pdf', 'doc', 'docx', 'odt', 'rtf', 'txt', 'md', 'xls', 'xlsx', 'ods', 'csv', 'ppt', 'pptx', 'odp', 'epub', 'pages', 'numbers', 'key', 'dwg', 'dxf'],
   },
   all: { label: 'Any file', exts: null },
 };

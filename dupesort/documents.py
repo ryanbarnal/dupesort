@@ -27,7 +27,14 @@ TYPE_FOLDERS = {
     "Presentations": {".ppt", ".pptx", ".odp"},
     "Text": {".txt", ".md"},
     "eBooks": {".epub"},
+    "Drawings": {".dwg", ".dxf"},
 }
+
+# Documents shorter than this must have exactly the same text to match: in drawings, forms
+# and letterheads the shared boilerplate is most of the text.
+SHORT_WORDS = 200
+# How alike two PDFs' first pages must look (share of drawn ink that lines up).
+PAGE_MATCH = 0.90
 
 _ZIP_PARTS = {
     ".docx": re.compile(r"word/(document|header\d*|footer\d*)\.xml$"),
@@ -84,17 +91,65 @@ def estimated_similarity(a: list[int], b: list[int]) -> float:
     return sum(x == y for x, y in zip(a, b)) / len(a)
 
 
+def pdf_look(path: Path, width: int = 300):
+    """(page count, ink mask of page 1) for a PDF: what it looks like, not what it says."""
+    try:
+        import pypdfium2 as pdfium
+        from PIL import ImageFilter
+
+        doc = pdfium.PdfDocument(str(path))
+        try:
+            pages = len(doc)
+            page = doc[0]
+            img = page.render(scale=width / max(1.0, page.get_width())).to_pil().convert("L")
+        finally:
+            doc.close()
+        ink = img.point(lambda v: 255 if v < 160 else 0)
+        # Thicken a little, so the same drawing written by another PDF program still lines up.
+        return pages, ink, ink.filter(ImageFilter.MaxFilter(3))
+    except Exception:
+        return None
+
+
+def pages_look_alike(a, b) -> bool:
+    """Do two PDFs (from ``pdf_look``) look the same? Same page count, and nearly all ink
+    on each first page falls where the other has ink too."""
+    if a is None or b is None:
+        return False
+    pages_a, ink_a, thick_a = a
+    pages_b, ink_b, thick_b = b
+    if pages_a != pages_b:
+        return False
+    if ink_a.size != ink_b.size:
+        thick_b, ink_b = thick_b.resize(ink_a.size), ink_b.resize(ink_a.size)
+    from PIL import ImageChops
+
+    def count(img) -> int:
+        return sum(img.histogram()[128:])
+
+    total = count(ink_a) + count(ink_b)
+    if total == 0:
+        return True  # two blank first pages
+    matched = (count(ImageChops.multiply(ink_a, thick_b)) +
+               count(ImageChops.multiply(ink_b, thick_a)))
+    return matched / total >= PAGE_MATCH
+
+
 def find_duplicates(files: list[FileEntry], settings,
                     progress: Optional[Callable[[int, int, str], None]] = None,
                     cancelled: Callable[[], bool] = lambda: False) -> list[DuplicateGroup]:
     found = [("Identical file", find_exact_duplicates(files, cancelled=cancelled))]
     sigs: dict[int, list[int]] = {}
+    words: dict[int, tuple[int, int]] = {}  # word count, hash of the exact words
     for n, f in enumerate(files):
         if cancelled():
             return merge_groups(found)
-        sig = minhash(extract_text(f.path))
+        text = extract_text(f.path)
+        sig = minhash(text)
         if sig:
             sigs[n] = sig
+            w = _words(text)
+            words[n] = (len(w), hash(tuple(w)))
         if progress and n % 5 == 0:
             progress(n + 1, len(files), f"Reading: {f.path.name}")
 
@@ -104,6 +159,24 @@ def find_duplicates(files: list[FileEntry], settings,
         for b in range(BANDS):
             buckets[(b, tuple(sig[b * ROWS:(b + 1) * ROWS]))].append(n)
     threshold = settings.document_similarity / 100
+    looks: dict[int, object] = {}
+
+    def look(n: int):
+        if n not in looks:
+            looks[n] = pdf_look(files[n].path)
+        return looks[n]
+
+    def same_document(a: int, b: int) -> bool:
+        if estimated_similarity(sigs[a], sigs[b]) < threshold:
+            return False
+        # Short texts are mostly boilerplate (a drawing's title block, a form): only the very
+        # same words count.
+        if min(words[a][0], words[b][0]) < SHORT_WORDS and words[a][1] != words[b][1]:
+            return False
+        # Two PDFs must also look the same: different drawings can share all their text.
+        pdf = {files[a].path.suffix.lower(), files[b].path.suffix.lower()} == {".pdf"}
+        return not pdf or pages_look_alike(look(a), look(b))
+
     checked, pairs = set(), []
     for members in buckets.values():
         for i, a in enumerate(members):
@@ -111,7 +184,7 @@ def find_duplicates(files: list[FileEntry], settings,
                 if (a, b) in checked:
                     continue
                 checked.add((a, b))
-                if estimated_similarity(sigs[a], sigs[b]) >= threshold:
+                if same_document(a, b):
                     pairs.append([files[a], files[b]])
     found.append(("Same text", pairs))
     return merge_groups(found)
