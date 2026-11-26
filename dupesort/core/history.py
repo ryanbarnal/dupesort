@@ -75,7 +75,9 @@ class Session:
     def move(self, src: Path, dst: Path) -> Path:
         """Move ``src`` to ``dst`` (made unique), creating folders as needed."""
         src, dst = Path(src), Path(dst)
-        if src == dst:
+        # Compare the text, not the paths: on Windows "a.mp3" and "A.mp3" are equal paths,
+        # which would skip a rename that only changes capital letters.
+        if str(src) == str(dst):
             return dst
         # On case-insensitive filesystems "song.mp3" -> "Song.mp3" is the same file.
         case_only = dst.exists() and os.path.samefile(src, dst)

@@ -172,3 +172,28 @@ def test_capitalize_names(tmp_path):
     assert session.undo() == []
     assert sorted(p.name for p in lib.iterdir()) == [
         "Already Fine.mp3", "kansas - dust in the wind.MP3", "queen - bohemian rhapsody.mp3"]
+
+
+def test_capitals_only_rename_on_windows_style_paths(tmp_path, monkeypatch):
+    """On Windows, Path("a.mp3") == Path("A.mp3"). A rename that only changes capitals must
+    still happen (it did nothing there before)."""
+    from pathlib import PureWindowsPath
+
+    from dupesort.core import history
+    from dupesort.core.history import Session
+
+    assert PureWindowsPath("C:/m/dust.mp3") == PureWindowsPath("C:/m/Dust.mp3")  # why it broke
+
+    class WinPath(type(tmp_path)):  # a real path that compares like Windows does
+        def __eq__(self, other):
+            return str(self).lower() == str(other).lower()
+
+        __hash__ = type(tmp_path).__hash__
+
+    monkeypatch.setattr(history, "Path", WinPath)
+    src = tmp_path / "dust in the wind.mp3"
+    src.write_bytes(b"x")
+    session = Session("Capitalized names")
+    out = session.move(src, tmp_path / "Dust In The Wind.mp3")
+    assert out.name == "Dust In The Wind.mp3"
+    assert sorted(p.name for p in tmp_path.iterdir() if p.suffix == ".mp3") == ["Dust In The Wind.mp3"]
