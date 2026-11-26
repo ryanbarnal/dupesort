@@ -1,0 +1,53 @@
+# Builds DupeSort Key Maker, the owner's portable app for making license keys:
+# "DupeSort Key Maker.exe" for Windows and "DupeSort Key Maker.app" for macOS.
+# Download them from this workflow run's Artifacts. Never ship them to customers
+# (they are harmless without your signing key, but they're your tool, not theirs).
+name: keymaker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["packaging/keymaker.py", "packaging/DupeSort Key Maker.html", ".github/workflows/keymaker.yml"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install --upgrade pip pyinstaller pytest
+      - name: Test
+        run: python -m pytest -q tests/test_keymaker.py
+
+      - name: Windows program
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          pyinstaller --onefile --windowed --name "DupeSort Key Maker" \
+            --icon packaging/icon.ico \
+            --add-data "packaging/DupeSort Key Maker.html;." packaging/keymaker.py
+          mkdir out && cp "dist/DupeSort Key Maker.exe" out/
+
+      - name: macOS app
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --onedir --windowed --name "DupeSort Key Maker" \
+            --icon packaging/icon.icns --osx-bundle-identifier com.ryanbarnal.dupesort.keymaker \
+            --add-data "packaging/DupeSort Key Maker.html:." packaging/keymaker.py
+          mkdir out
+          ditto -c -k --keepParent "dist/DupeSort Key Maker.app" "out/DupeSort Key Maker (macOS).zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DupeSort-Key-Maker-${{ runner.os }}
+          path: out/*
+          retention-days: 90

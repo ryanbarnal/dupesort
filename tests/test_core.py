@@ -139,3 +139,36 @@ def test_keeper_prefers_original_over_copy_name(tmp_path):
     groups = merge_groups([("Identical file", [scan([tmp_path], "photos")])])
     choose_keepers(groups, "best")
     assert groups[0].files[next(iter(groups[0].keep))].path.name == "IMG_1.jpg"
+
+
+def test_capitalize_names(tmp_path):
+    from dupesort.core.history import Session
+    from dupesort.core.organize import apply_moves, capitalize, plan_capitalize
+    from dupesort.core.scanner import scan
+
+    assert capitalize("kansas - dust in the wind") == "Kansas - Dust In The Wind"
+    assert capitalize("03 - don't stop me now (live at wembley)") == \
+        "03 - Don't Stop Me Now (Live At Wembley)"
+    assert capitalize("ac/dc - back in black") == "Ac/Dc - Back In Black"
+    assert capitalize("my iPod's 3rd mix_final") == "My IPod's 3rd Mix_Final"
+    assert capitalize("été à paris") == "Été À Paris"
+    assert capitalize("DUST IN THE WIND", "words_lower") == "Dust In The Wind"
+    assert capitalize("McCartney - mull of kintyre", "words") == "McCartney - Mull Of Kintyre"
+    assert capitalize("dust in the wind", "first") == "Dust in the wind"
+    assert capitalize("2024-05-06 beach", "first") == "2024-05-06 Beach"
+    assert capitalize("") == "" and capitalize("123") == "123"
+
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    for name in ("kansas - dust in the wind.MP3", "Already Fine.mp3", "queen - bohemian rhapsody.mp3"):
+        (lib / name).write_bytes(b"x" * 10)
+    plan = plan_capitalize(scan([lib], "music"))
+    assert sorted(t.name for _, t in plan) == ["Kansas - Dust In The Wind.MP3",
+                                               "Queen - Bohemian Rhapsody.mp3"]
+    session = Session("Capitalized names")
+    assert apply_moves(plan, session) == []
+    assert sorted(p.name for p in lib.iterdir()) == [
+        "Already Fine.mp3", "Kansas - Dust In The Wind.MP3", "Queen - Bohemian Rhapsody.mp3"]
+    assert session.undo() == []
+    assert sorted(p.name for p in lib.iterdir()) == [
+        "Already Fine.mp3", "kansas - dust in the wind.MP3", "queen - bohemian rhapsody.mp3"]

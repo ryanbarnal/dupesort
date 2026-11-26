@@ -27,6 +27,7 @@ CATEGORY_EXTENSIONS = {
     "documents": {
         ".pdf", ".doc", ".docx", ".odt", ".rtf", ".txt", ".md", ".xls",
         ".xlsx", ".ods", ".csv", ".ppt", ".pptx", ".odp", ".epub",
+        ".dwg", ".dxf",  # AutoCAD drawings: identical copies only (no text to compare)
     },
 }
 

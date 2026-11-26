@@ -452,8 +452,11 @@ class MusicPage(CategoryPage):
 
         from .convert_tab import AudioConvertTab
 
+        from .organize_tab import CapitalizeTab
+
         self.tag_tab = TagTab(self)
         tabs.addTab(self.tag_tab, "Tags, lyrics && rename")
+        tabs.addTab(CapitalizeTab(self), "Capitalize names")
         tabs.addTab(AudioConvertTab(self), "Convert")
 
 
@@ -474,9 +477,10 @@ class PhotoPage(CategoryPage):
 
     def add_tabs(self, tabs: QTabWidget) -> None:
         from .convert_tab import ImageConvertTab
-        from .organize_tab import DateTab
+        from .organize_tab import CapitalizeTab, DateTab
 
         tabs.addTab(DateTab(self), "Organize by date")
+        tabs.addTab(CapitalizeTab(self), "Capitalize names")
         tabs.addTab(ImageConvertTab(self), "Convert && resize")
 
 
@@ -502,10 +506,11 @@ class VideoPage(CategoryPage):
         self.settings.video_threshold = self.threshold.value()
 
     def add_tabs(self, tabs: QTabWidget) -> None:
-        from .organize_tab import DateTab, MovieTab
+        from .organize_tab import CapitalizeTab, DateTab, MovieTab
 
         tabs.addTab(DateTab(self), "Organize by date")
         tabs.addTab(MovieTab(self), "Movies && TV names")
+        tabs.addTab(CapitalizeTab(self), "Capitalize names")
         from .convert_tab import VideoConvertTab
 
         tabs.addTab(VideoConvertTab(self), "Convert && resize")
@@ -528,9 +533,9 @@ class DocumentPage(CategoryPage):
         self.settings.document_similarity = self.similarity.value()
 
     def add_tabs(self, tabs: QTabWidget) -> None:
-        from .organize_tab import TypeTab
-
         from .convert_tab import PdfTab
+        from .organize_tab import CapitalizeTab, TypeTab
 
         tabs.addTab(TypeTab(self), "Sort by type")
+        tabs.addTab(CapitalizeTab(self), "Capitalize names")
         tabs.addTab(PdfTab(self), "PDF tools")

@@ -14,7 +14,9 @@ from .. import documents, videos
 from ..core.history import Session
 from . import icons
 from .license_dialog import require as require_license
-from ..core.organize import apply_moves, date_source, file_date, plan_date_moves
+from ..core.organize import (
+    CAPITALIZE_STYLES, apply_moves, date_source, file_date, plan_capitalize, plan_date_moves,
+)
 
 
 class PlanTab(QWidget):
@@ -23,6 +25,8 @@ class PlanTab(QWidget):
     columns = ["Apply", "File", "From", "To"]
     apply_label = "Apply ticked"
     apply_icon = "check"
+    license_reason = "move files into folders"
+    show_new_name = False  # the To column shows just the new name (renames in place)
 
     def __init__(self, page) -> None:
         super().__init__()
@@ -93,13 +97,15 @@ class PlanTab(QWidget):
 
     def _show_plan(self, plan) -> None:
         self.plan = plan
+        self.page.status.setText("")
         self.table.setRowCount(len(plan))
         for row, (f, target, extra) in enumerate(plan):
             check = QTableWidgetItem()
             check.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
             check.setCheckState(Qt.Checked)
             self.table.setItem(row, 0, check)
-            cells = [f.path.name, str(f.path.parent), str(target)] + ([extra] if extra else [])
+            to = target.name if self.show_new_name else str(target)
+            cells = [f.path.name, str(f.path.parent), to] + ([extra] if extra else [])
             for col, text in enumerate(cells, 1):
                 if col < len(self.columns):
                     item = QTableWidgetItem(text)
@@ -110,7 +116,7 @@ class PlanTab(QWidget):
                              (f" {skipped} unmoved duplicates are left out." if skipped else ""))
 
     def apply(self) -> None:
-        if not require_license(self, "move files into folders"):
+        if not require_license(self, self.license_reason):
             return
         ticked = [self.plan[r] for r in range(self.table.rowCount())
                   if self.table.item(r, 0).checkState() == Qt.Checked]
@@ -226,3 +232,41 @@ class MovieTab(PlanTab):
 
     def session_title(self, n: int) -> str:
         return f"Renamed {n} videos from TMDb"
+
+
+class CapitalizeTab(PlanTab):
+    """Rename scanned files so their names start with capital letters."""
+
+    columns = ["Apply", "File", "Folder", "New name"]
+    apply_label = "Rename ticked"
+    apply_icon = "pencil"
+    license_reason = "rename files"
+    show_new_name = True
+
+    def build_controls(self, row: QHBoxLayout) -> None:
+        from PySide6.QtWidgets import QComboBox
+
+        self.style = QComboBox()
+        for key, label in CAPITALIZE_STYLES.items():
+            self.style.addItem(label, key)
+        self.style.setToolTip("Capitalize Each Word: “kansas - dust in the wind” → “Kansas - Dust "
+                              "In The Wind”; other letters stay as they are.\n"
+                              "Each Word, rest lower case: also turns “DUST IN THE WIND” into "
+                              "“Dust In The Wind”.\n"
+                              "First letter only: “dust in the wind” → “Dust in the wind”.")
+        row.addWidget(QLabel("Style:"))
+        row.addWidget(self.style)
+
+    def hint(self) -> str:
+        return ("Give file names capital first letters, e.g. “kansas - dust in the wind.mp3” → "
+                "“Kansas - Dust In The Wind.mp3”. Scan first, then press Preview changes. "
+                "Only the names change; Undo from History puts them back.")
+
+    def read_controls(self) -> dict:
+        return {"style": self.style.currentData()}
+
+    def make_plan(self, files, opts):
+        return [(f, t, "") for f, t in plan_capitalize(files, opts["style"])]
+
+    def session_title(self, n: int) -> str:
+        return f"Capitalized {n} file names"

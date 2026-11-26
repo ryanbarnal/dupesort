@@ -10,3 +10,4 @@ bin/
 # Never commit the license signing key
 .dupesort-signing-key
 *signing-key*
+DupeSort keys ledger.csv
