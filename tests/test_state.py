@@ -68,3 +68,17 @@ def test_broken_or_missing_state_is_ignored(tmp_path):
     assert state.load_page("photos") is None
     state.clear_page("photos")
     assert state.load_page("photos") is None
+
+
+def test_keep_ticks_survive_any_file_order(tmp_path):
+    """The ticked copy comes back on the right file even when the scan listed the files in
+    a different order from the group (this differs between computers)."""
+    files, (a, b, c) = _library(tmp_path)
+    for order in ([c, b, a], [b, c, a], [a, c, b]):
+        state.save_page("music", order, [DuplicateGroup([a, b, c], "x", {1})])
+        [g] = state.load_page("music")["groups"]
+        assert [g.files[i].path for i in g.keep] == [b.path]
+    os.remove(a.path)  # the first copy goes: the tick stays on b
+    state.save_page("music", [c, b, a], [DuplicateGroup([a, b, c], "x", {1})])
+    [g] = state.load_page("music")["groups"]
+    assert [f.path for f in g.files] == [b.path, c.path] and [g.files[i].path for i in g.keep] == [b.path]

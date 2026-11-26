@@ -27,7 +27,7 @@ from . import APP_NAME
 TRIAL_DAYS = 30
 # The public half of the developer's signing key, as 64 hex characters. Set by
 # `python packaging/license_tool.py init`. Empty means keys can't be checked yet.
-PUBLIC_KEY = ""
+PUBLIC_KEY = "079b50ce26c9493efebf1f20c74b50fce87e03e5baf98f989ecf692169ea051c"
 KEY_PREFIX = "DUPESORT"
 
 # --- Ed25519 signatures (RFC 8032), small and dependency-free -------------------------------

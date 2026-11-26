@@ -161,13 +161,13 @@ def load_page(category: str) -> Optional[dict]:
     for g in data.get("groups", []):
         keep_old = set(g.get("keep", []))
         kept_files, keep = [], set()
-        for i in g.get("files", []):
+        for pos, i in enumerate(g.get("files", [])):  # keep ticks are positions in the group
             if not 0 <= i < len(files):
                 continue
             if i not in checked:
                 checked[i] = _unchanged(files[i])
             if checked[i]:
-                if i in keep_old:
+                if pos in keep_old:
                     keep.add(len(kept_files))
                 kept_files.append(files[i])
             else:
