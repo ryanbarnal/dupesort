@@ -111,3 +111,16 @@ test('phash: same picture at another brightness matches, a different picture doe
   assert.ok(hamming(phash(beach), phash(brighter)) <= 2);
   assert.ok(hamming(phash(beach), phash(forest)) > 16);
 });
+
+test('results sort by space, name, folder, size and date', async () => {
+  const { sortGroups, fileOrder } = await import('../../web/js/core.js');
+  const f = (name, folder, size, mtime) => ({ name, folder, size, mtime, path: `${folder}/${name}` });
+  const g1 = { files: [f('zebra.mp3', 'B', 900, 1), f('Zebra copy.mp3', 'A', 900, 5)], keep: new Set([0]) };
+  const g2 = { files: [f('apple.mp3', 'D', 10000, 2), f('apple (1).mp3', 'C', 9000, 3)], keep: new Set([0]) };
+  const names = (gs, s) => gs.map((g) => fileOrder(g, s).map((i) => g.files[i].name).join('|'));
+  assert.deepEqual(names(sortGroups([g1, g2], 'space'), 'space'), ['apple.mp3|apple (1).mp3', 'zebra.mp3|Zebra copy.mp3']);
+  assert.deepEqual(names(sortGroups([g2, g1], 'name'), 'name'), ['apple (1).mp3|apple.mp3', 'Zebra copy.mp3|zebra.mp3']);
+  assert.deepEqual(names(sortGroups([g2, g1], 'folder'), 'folder'), ['Zebra copy.mp3|zebra.mp3', 'apple (1).mp3|apple.mp3']);
+  assert.deepEqual(names(sortGroups([g1, g2], 'newest'), 'newest'), ['Zebra copy.mp3|zebra.mp3', 'apple (1).mp3|apple.mp3']);
+  assert.deepEqual(fileOrder(g2, 'size'), [0, 1]); // positions in the group: `keep` still matches
+});
