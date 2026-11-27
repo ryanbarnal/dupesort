@@ -12,6 +12,7 @@ from typing import Callable, Optional
 from .core.duplicates import DuplicateGroup, merge_groups
 from .core.hashing import find_exact_duplicates
 from .core.scanner import FileEntry
+from .core.longpath import lp
 
 MAX_TEXT = 2_000_000
 NUM_PERM, BANDS = 128, 32
@@ -46,23 +47,28 @@ _ZIP_PARTS = {
 }
 
 
+def _head(path: Path) -> bytes:
+    with open(lp(path), "rb") as fh:
+        return fh.read(MAX_TEXT)
+
+
 def extract_text(path: Path) -> str:
     ext = path.suffix.lower()
     try:
         if ext in (".txt", ".md", ".csv"):
-            return path.read_bytes()[:MAX_TEXT].decode("utf-8", "ignore")
+            return _head(path).decode("utf-8", "ignore")
         if ext == ".rtf":
-            raw = path.read_bytes()[:MAX_TEXT].decode("latin-1", "ignore")
+            raw = _head(path).decode("latin-1", "ignore")
             raw = re.sub(r"\\'[0-9a-f]{2}|\\[a-z]+-?\d* ?|[{}]", " ", raw)
             return raw
         if ext == ".pdf":
             from pypdf import PdfReader
 
-            reader = PdfReader(str(path))
+            reader = PdfReader(lp(path))
             return "\n".join((p.extract_text() or "") for p in reader.pages[:50])
         if ext in _ZIP_PARTS:
             pattern, chunks = _ZIP_PARTS[ext], []
-            with zipfile.ZipFile(path) as z:
+            with zipfile.ZipFile(lp(path)) as z:
                 for name in sorted(z.namelist()):
                     if pattern.search(name):
                         xml = z.read(name)[:MAX_TEXT].decode("utf-8", "ignore")
@@ -97,7 +103,7 @@ def pdf_look(path: Path, width: int = 300):
         import pypdfium2 as pdfium
         from PIL import ImageFilter
 
-        doc = pdfium.PdfDocument(str(path))
+        doc = pdfium.PdfDocument(lp(path))
         try:
             pages = len(doc)
             page = doc[0]

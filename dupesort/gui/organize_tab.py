@@ -46,6 +46,7 @@ class PlanTab(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.horizontalHeader().setToolTip("Click a column heading to sort by it")
         for col, w in enumerate((50, 220, 260)):
             self.table.horizontalHeader().resizeSection(col, w)
 
@@ -98,11 +99,13 @@ class PlanTab(QWidget):
     def _show_plan(self, plan) -> None:
         self.plan = plan
         self.page.status.setText("")
+        self.table.setSortingEnabled(False)  # fill, then let the headings sort
         self.table.setRowCount(len(plan))
         for row, (f, target, extra) in enumerate(plan):
             check = QTableWidgetItem()
             check.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
             check.setCheckState(Qt.Checked)
+            check.setData(Qt.UserRole, row)  # which plan entry, wherever sorting puts it
             self.table.setItem(row, 0, check)
             to = target.name if self.show_new_name else str(target)
             cells = [f.path.name, str(f.path.parent), to] + ([extra] if extra else [])
@@ -111,6 +114,7 @@ class PlanTab(QWidget):
                     item = QTableWidgetItem(text)
                     item.setToolTip(text)
                     self.table.setItem(row, col, item)
+        self.table.setSortingEnabled(True)
         skipped = len(self.page.groups) and sum(len(g.duplicates) for g in self.page.groups)
         self.summary.setText(f"{len(plan)} files will change." +
                              (f" {skipped} unmoved duplicates are left out." if skipped else ""))
@@ -118,7 +122,8 @@ class PlanTab(QWidget):
     def apply(self) -> None:
         if not require_license(self, self.license_reason):
             return
-        ticked = [self.plan[r] for r in range(self.table.rowCount())
+        ticked = [self.plan[self.table.item(r, 0).data(Qt.UserRole)]
+                  for r in range(self.table.rowCount())
                   if self.table.item(r, 0).checkState() == Qt.Checked]
         if not ticked:
             return

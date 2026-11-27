@@ -1,8 +1,8 @@
 // DupeSort web app: choose folders, scan, review the groups, move duplicates (Chrome / Edge).
 
 import {
-  CATEGORIES, DUPLICATES_DIR, KEEP, chooseKeepers, duration, humanSize, mergeGroups, report,
-  sameTags, similarPairs, splitByDuration, wasted,
+  CATEGORIES, DUPLICATES_DIR, KEEP, SORTS, chooseKeepers, duration, fileOrder, humanSize, mergeGroups, report,
+  sameTags, similarPairs, sortGroups, splitByDuration, wasted,
 } from './core.js';
 import {
   audioDuration, canWrite, ensureWritable, exactGroups, isPhoto, listFiles, moveToDuplicates,
@@ -17,7 +17,7 @@ const PAGE = 60; // groups drawn at a time
 const state = {
   roots: [],
   category: 'music',
-  opts: load('dupesort-options', { keep: 'best', byTags: true, versions: true, similar: true, tolerance: 6 }),
+  opts: load('dupesort-options', { keep: 'best', byTags: true, versions: true, similar: true, tolerance: 6, sort: 'space' }),
   files: [],
   groups: [],
   shown: PAGE,
@@ -277,18 +277,26 @@ function renderResults(partial = false) {
   const free = groups.reduce((n, g) => n + wasted(g), 0);
   $('#summary').innerHTML = groups.length
     ? `<span><b style="color:var(--fg)">${groups.length}</b> ${plural(groups.length, 'group')} · <b style="color:var(--fg)">${dupes}</b> ${plural(dupes, 'duplicate')} · ${humanSize(free)} can be freed${partial ? ' · scan cancelled, partial results' : ''}</span>
-       <span class="small">Ticked files are kept. Click a file to change which one.</span>`
+       <span class="small">Ticked files are kept. Click a file to change which one.</span>
+       <label class="small" style="margin-left:auto">Sort by <select id="sort">${Object.entries(SORTS)
+         .map(([k, v]) => `<option value="${k}" ${k === state.opts.sort ? 'selected' : ''}>${v}</option>`).join('')}</select></label>`
     : `<span>No duplicates found in ${state.files.length} files${partial ? ' (scan cancelled)' : ''}.</span>`;
 
   const list = $('#groups');
   list.innerHTML = '';
   const showPhotos = state.category === 'photos' || state.category === 'all';
-  groups.slice(0, state.shown).forEach((g, gi) => {
+  $('#sort')?.addEventListener('change', (e) => {
+    state.opts.sort = e.target.value;
+    save();
+    renderResults(partial);
+  });
+  sortGroups(groups, state.opts.sort).slice(0, state.shown).forEach((g, gi) => {
     const card = document.createElement('div');
     card.className = 'group';
     card.innerHTML = `<div class="group-head"><h3>Group ${gi + 1}</h3><span class="pill">${esc(g.reason)}</span>
       <span class="free">${g.files.length} files · ${humanSize(wasted(g))} can be freed</span></div>`;
-    g.files.forEach((f, i) => {
+    fileOrder(g, state.opts.sort).forEach((i) => {
+      const f = g.files[i];
       const kept = g.keep.has(i);
       const row = document.createElement('div');
       row.className = `file${kept ? '' : ' dupe'}`;

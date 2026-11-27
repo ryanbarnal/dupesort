@@ -181,6 +181,21 @@ class FolderList(QWidget):
         self.changed.emit()
 
 
+SORT_ROLE = Qt.UserRole + 1
+
+
+class SortItem(QTreeWidgetItem):
+    """A row that sorts by the value it stores (bytes, a date), not by the text shown, so
+    "9.5 MB" comes after "800 KB"."""
+
+    def __lt__(self, other) -> bool:
+        col = self.treeWidget().sortColumn() if self.treeWidget() else 0
+        a, b = self.data(col, SORT_ROLE), other.data(col, SORT_ROLE)
+        if a is not None and b is not None:
+            return a < b
+        return self.text(col).lower() < other.text(col).lower()
+
+
 class DuplicateTree(QTreeWidget):
     """Groups as parent rows; tick the files to KEEP (at least one per group)."""
 
@@ -198,31 +213,55 @@ class DuplicateTree(QTreeWidget):
         h.resizeSection(1, 280)
         self.groups: list[DuplicateGroup] = []
         self._updating = False
+        # Click a column heading to sort (again to reverse). Groups stay together: groups
+        # sort among themselves and the files in each group sort the same way.
+        h.setSectionsClickable(True)
+        h.setSortIndicatorShown(True)
+        self.setToolTip("Click a column heading to sort by it; click again to reverse.")
         self.itemChanged.connect(self._on_changed)
         self.currentItemChanged.connect(self._on_current)
 
     def set_groups(self, groups: list[DuplicateGroup]) -> None:
         self._updating = True
+        column, order = self.sortColumn(), self.header().sortIndicatorOrder()
+        if not self.groups and not groups or not self.isSortingEnabled():
+            column, order = 2, Qt.DescendingOrder  # first time: most space to free first
+        self.setSortingEnabled(False)  # fill first, then sort once
         self.clear()
         self.groups = groups
         for gi, g in enumerate(groups):
-            top = QTreeWidgetItem([f"Group {gi + 1}: {len(g.files)} files", "",
-                                   human_size(g.wasted_bytes), g.reason, ""])
+            top = SortItem([f"Group {gi + 1}: {len(g.files)} files", "",
+                            human_size(g.wasted_bytes), g.reason, ""])
             top.setData(0, Qt.UserRole, (gi, -1))
+            # A group sorts by its first file's name and folder, the space it frees, its
+            # reason and its newest file.
+            first = min(g.files, key=lambda f: f.path.name.lower())
+            top.setData(0, SORT_ROLE, first.path.name.lower())
+            top.setData(1, SORT_ROLE, str(first.path.parent).lower())
+            top.setData(2, SORT_ROLE, g.wasted_bytes)
+            top.setData(3, SORT_ROLE, g.reason.lower())
+            top.setData(4, SORT_ROLE, max(f.mtime for f in g.files))
             font = top.font(0)
             font.setBold(True)
             top.setFont(0, font)
             for fi, f in enumerate(g.files):
-                child = QTreeWidgetItem([
+                child = SortItem([
                     f.path.name, str(f.path.parent), human_size(f.size), describe(f),
                     datetime.fromtimestamp(f.mtime).strftime("%Y-%m-%d %H:%M"),
                 ])
                 child.setToolTip(0, str(f.path))
                 child.setData(0, Qt.UserRole, (gi, fi))
+                child.setData(0, SORT_ROLE, f.path.name.lower())
+                child.setData(1, SORT_ROLE, str(f.path.parent).lower())
+                child.setData(2, SORT_ROLE, f.size)
+                child.setData(3, SORT_ROLE, describe(f).lower())
+                child.setData(4, SORT_ROLE, f.mtime)
                 child.setCheckState(0, Qt.Checked if fi in g.keep else Qt.Unchecked)
                 top.addChild(child)
             self.addTopLevelItem(top)
             top.setExpanded(gi < 200)
+        self.setSortingEnabled(True)
+        self.sortByColumn(column, order)
         self._updating = False
 
     def _on_changed(self, item: QTreeWidgetItem, column: int) -> None:
@@ -243,6 +282,7 @@ class DuplicateTree(QTreeWidget):
                 self._updating = False
         top = item.parent()
         top.setText(2, human_size(g.wasted_bytes))
+        top.setData(2, SORT_ROLE, g.wasted_bytes)
         self.keep_changed.emit()
 
     def _on_current(self, item: Optional[QTreeWidgetItem], _prev) -> None:

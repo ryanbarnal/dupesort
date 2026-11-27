@@ -13,6 +13,7 @@ from mutagen.asf import ASF
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, TALB, TCON, TDRC, TIT2, TPE1, TPE2, TRCK, USLT
 from mutagen.mp4 import MP4, MP4Cover
+from ..core.longpath import lp
 
 FIELDS = ("title", "artist", "album", "albumartist", "genre", "date", "tracknumber", "lyrics")
 LOSSLESS = {".flac", ".wav", ".aiff", ".aif", ".ape", ".wv", ".alac"}
@@ -29,7 +30,7 @@ _APE = {"title": "Title", "artist": "Artist", "album": "Album", "albumartist": "
 
 
 def _open(path: Path):
-    audio = mutagen.File(str(path))
+    audio = mutagen.File(lp(path))
     if audio is None:
         raise ValueError(f"Unsupported audio file: {path.name}")
     return audio

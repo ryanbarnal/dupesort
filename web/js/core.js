@@ -342,6 +342,36 @@ export function chooseKeepers(groups, strategy, category) {
   }
 }
 
+// --- sorting the results ----------------------------------------------------------------------
+
+export const SORTS = { space: 'Space to free', name: 'Name', folder: 'Folder', size: 'File size', newest: 'Newest' };
+
+const fileKey = {
+  space: (f) => -f.size,
+  name: (f) => f.name.toLowerCase(),
+  folder: (f) => (f.folder || '').toLowerCase(),
+  size: (f) => -f.size,
+  newest: (f) => -(f.mtime || 0),
+};
+
+function cmp(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** File positions of a group in display order (the group's own order is left alone, since
+ * `keep` refers to it). */
+export function fileOrder(group, sort) {
+  const key = fileKey[sort] || fileKey.space;
+  return group.files.map((_, i) => i).sort((a, b) => cmp(key(group.files[a]), key(group.files[b])) || a - b);
+}
+
+/** The groups in display order: by the space they free, or by their first file in `sort` order. */
+export function sortGroups(groups, sort) {
+  const key = fileKey[sort] || fileKey.space;
+  const gkey = (g) => (sort === 'space' || !fileKey[sort] ? -wasted(g) : key(g.files[fileOrder(g, sort)[0]]));
+  return groups.map((g, i) => [g, i]).sort((a, b) => cmp(gkey(a[0]), gkey(b[0])) || a[1] - b[1]).map(([g]) => g);
+}
+
 // --- formatting -------------------------------------------------------------------------------
 
 export function humanSize(n) {

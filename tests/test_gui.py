@@ -344,3 +344,71 @@ def test_capitalize_names_section(app, tmp_path, monkeypatch):
     wait()
     assert sorted(p.name for p in lib.iterdir()) == ["Dust In The Wind.mp3", "Fine Name.mp3"]
     w.close()
+
+
+def test_results_can_be_sorted(app, tmp_path, monkeypatch):
+    import time
+
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QMessageBox
+
+    from dupesort.core.duplicates import DuplicateGroup
+    from dupesort.core.scanner import scan
+    from dupesort.gui.main_window import MainWindow
+    from dupesort.gui.organize_tab import CapitalizeTab
+
+    lib = tmp_path / "lib"
+    for folder, name, size in (("b", "zebra.pdf", 900), ("a", "zebra copy.pdf", 900),
+                               ("c", "apple.pdf", 10_000), ("d", "apple (1).pdf", 10_000)):
+        (lib / folder).mkdir(parents=True, exist_ok=True)
+        (lib / folder / name).write_bytes(b"x" * size)
+    files = {f.path.name: f for f in scan([lib], "documents")}
+    small = DuplicateGroup([files["zebra.pdf"], files["zebra copy.pdf"]], "Identical file", {0})
+    big = DuplicateGroup([files["apple.pdf"], files["apple (1).pdf"]], "Identical file", {0})
+
+    w = MainWindow()
+    page = w.pages[3][2]
+    tree = page.tree
+    tree.set_groups([small, big])
+    top = lambda: [tree.topLevelItem(i).child(0).text(0) for i in range(tree.topLevelItemCount())]
+    # Starts with the most space to free first.
+    assert tree.sortColumn() == 2 and top()[0].startswith("apple")
+    tree.sortByColumn(2, Qt.AscendingOrder)  # by size, as numbers: 900 B before 10 KB
+    assert top()[0].startswith("zebra")
+    tree.sortByColumn(0, Qt.AscendingOrder)  # by name: groups, and files inside each group
+    assert [tree.topLevelItem(0).child(i).text(0) for i in range(2)] == ["apple (1).pdf", "apple.pdf"]
+    tree.sortByColumn(1, Qt.DescendingOrder)  # by folder
+    assert tree.topLevelItem(0).child(0).text(1).endswith("d")
+
+    # Ticking after sorting changes the file shown on that row.
+    tree.sortByColumn(0, Qt.AscendingOrder)
+    row = tree.topLevelItem(0).child(0)  # "apple (1).pdf", the second file of `big`
+    row.setCheckState(0, Qt.Checked)
+    assert big.keep == {0, 1}
+    # Redrawing keeps the chosen sort.
+    tree.set_groups([small, big])
+    assert tree.sortColumn() == 0 and top()[0].startswith("apple")
+
+    # Preview tables sort too, and Rename ticked still renames the right files.
+    for name in ("dust.mp3", "zz top.mp3", "abba.mp3"):
+        (tmp_path / "m").mkdir(exist_ok=True)
+        (tmp_path / "m" / name).write_bytes(b"y")
+    music = w.pages[0][2]
+    music.files = scan([tmp_path / "m"], "music")
+    tab = next(music.tabs.widget(i) for i in range(music.tabs.count())
+               if isinstance(music.tabs.widget(i), CapitalizeTab))
+    tab.preview()
+    end = time.time() + 10
+    while music.task is not None and time.time() < end:
+        app.processEvents()
+    tab.table.sortByColumn(1, Qt.DescendingOrder)
+    names = [tab.table.item(r, 1).text() for r in range(3)]
+    assert names == ["zz top.mp3", "dust.mp3", "abba.mp3"]
+    tab.table.item(0, 0).setCheckState(Qt.Unchecked)  # leave "zz top.mp3" alone
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)
+    tab.apply()
+    end = time.time() + 10
+    while music.task is not None and time.time() < end:
+        app.processEvents()
+    assert sorted(p.name for p in (tmp_path / "m").iterdir()) == ["Abba.mp3", "Dust.mp3", "zz top.mp3"]
+    w.close()

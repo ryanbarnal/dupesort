@@ -14,6 +14,7 @@ from .core.hashing import find_exact_duplicates
 from .core.scanner import FileEntry
 from .core.similar import group_similar
 from .settings import Settings
+from .core.longpath import lp
 
 try:  # iPhone HEIC photos, if the optional plugin is installed
     from pillow_heif import register_heif_opener
@@ -37,7 +38,7 @@ def _parse_exif_date(value) -> Optional[datetime]:
 
 def load_image_info(f: FileEntry) -> None:
     """Fill ``f.info`` with width, height, date taken and a 64-bit perceptual hash."""
-    with Image.open(f.path) as img:
+    with Image.open(lp(f.path)) as img:
         f.info["width"], f.info["height"] = img.size
         exif = img.getexif()
         sub = exif.get_ifd(EXIF_IFD) if exif else {}
@@ -78,7 +79,7 @@ def find_duplicates(files: list[FileEntry], settings: Settings,
 def thumbnail(path: Path, size: int = 320):
     """A PIL thumbnail (RGB) for previews, or None."""
     try:
-        with Image.open(path) as img:
+        with Image.open(lp(path)) as img:
             img.draft("RGB", (size * 2, size * 2))
             img = ImageOps.exif_transpose(img).convert("RGB")
             img.thumbnail((size, size))
