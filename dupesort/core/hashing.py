@@ -9,6 +9,8 @@ from typing import Callable, Optional
 
 from .scanner import FileEntry
 
+from .longpath import lp
+
 CHUNK = 1024 * 1024
 PARTIAL_BYTES = 64 * 1024
 
@@ -16,7 +18,7 @@ PARTIAL_BYTES = 64 * 1024
 def partial_hash(path: Path) -> str:
     """Hash the first and last 64 KiB - cheap and rules out most non-matches."""
     h = hashlib.blake2b(digest_size=16)
-    with open(path, "rb") as f:
+    with open(lp(path), "rb") as f:
         h.update(f.read(PARTIAL_BYTES))
         f.seek(0, 2)
         size = f.tell()
@@ -28,7 +30,7 @@ def partial_hash(path: Path) -> str:
 
 def full_hash(path: Path) -> str:
     h = hashlib.blake2b(digest_size=32)
-    with open(path, "rb") as f:
+    with open(lp(path), "rb") as f:
         for chunk in iter(lambda: f.read(CHUNK), b""):
             h.update(chunk)
     return h.hexdigest()

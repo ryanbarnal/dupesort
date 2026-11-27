@@ -14,6 +14,7 @@ from typing import Optional
 from platformdirs import user_data_dir
 
 from .. import APP_NAME
+from .longpath import exists, is_dir, lp
 from .scanner import DUPLICATES_DIR, FileEntry
 
 _INVALID = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -40,13 +41,13 @@ def safe_filename(name: str, max_len: int = 180) -> str:
 
 
 def unique_path(path: Path) -> Path:
-    if not path.exists():
+    if not exists(path):
         return path
     stem, ext = path.stem, path.suffix
     n = 1
     while True:
         candidate = path.with_name(f"{stem} ({n}){ext}")
-        if not candidate.exists():
+        if not exists(candidate):
             return candidate
         n += 1
 
@@ -80,17 +81,18 @@ class Session:
         if str(src) == str(dst):
             return dst
         # On case-insensitive filesystems "song.mp3" -> "Song.mp3" is the same file.
-        case_only = dst.exists() and os.path.samefile(src, dst)
+        # lp(): Windows paths of any length (moving into _Duplicates makes them longer).
+        case_only = exists(dst) and os.path.samefile(lp(src), lp(dst))
         if not case_only:
             dst = unique_path(dst)
-        dst.parent.mkdir(parents=True, exist_ok=True)
+        os.makedirs(lp(dst.parent), exist_ok=True)
         if src.parent == dst.parent and src.name.lower() == dst.name.lower():
             # Case-only rename on a case-insensitive filesystem needs two steps.
             tmp = unique_path(src.with_name(src.name + ".dupesort-tmp"))
-            os.rename(src, tmp)
-            os.rename(tmp, dst)
+            os.rename(lp(src), lp(tmp))
+            os.rename(lp(tmp), lp(dst))
         else:
-            shutil.move(str(src), str(dst))
+            shutil.move(lp(src), lp(dst))
         self.ops.append({"op": "move", "src": str(src), "dst": str(dst)})
         self._save()
         return dst
@@ -121,18 +123,18 @@ class Session:
             try:
                 if op["op"] == "move":
                     src, dst = Path(op["src"]), Path(op["dst"])
-                    if not dst.exists():
+                    if not exists(dst):
                         problems.append(f"Missing, cannot restore: {dst}")
-                    elif src.exists() and src.name.lower() != dst.name.lower():
+                    elif exists(src) and src.name.lower() != dst.name.lower():
                         problems.append(f"Original location is occupied: {src}")
                     else:
-                        src.parent.mkdir(parents=True, exist_ok=True)
+                        os.makedirs(lp(src.parent), exist_ok=True)
                         if src.parent == dst.parent and src.name.lower() == dst.name.lower():
                             tmp = unique_path(dst.with_name(dst.name + ".dupesort-tmp"))
-                            os.rename(dst, tmp)
-                            os.rename(tmp, src)
+                            os.rename(lp(dst), lp(tmp))
+                            os.rename(lp(tmp), lp(src))
                         else:
-                            shutil.move(str(dst), str(src))
+                            shutil.move(lp(dst), lp(src))
                         _remove_empty_dirs(dst.parent)
                 elif op["op"] == "tags":
                     from ..music.tags import write_tags
@@ -152,9 +154,9 @@ def _remove_empty_dirs(folder: Path) -> None:
     if DUPLICATES_DIR not in parts:
         return
     stop = Path(*parts[: parts.index(DUPLICATES_DIR)])
-    while folder != stop and folder.is_dir():
+    while folder != stop and is_dir(folder):
         try:
-            folder.rmdir()
+            os.rmdir(lp(folder))
         except OSError:
             return
         folder = folder.parent

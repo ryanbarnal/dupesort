@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable, Optional
 
+from .longpath import lp, unlp
+
 DUPLICATES_DIR = "_Duplicates"
 # Originals that a conversion replaced in place (see convert.audio); never scanned.
 CONVERTED_DIR = "_Converted"
@@ -85,7 +87,9 @@ def scan(
         root = Path(root).expanduser().resolve()
         if not root.is_dir():
             continue
-        for dirpath, dirnames, filenames in os.walk(root):
+        # Walk in the long-path form so folders past 259 characters aren't skipped on Windows.
+        for dirpath, dirnames, filenames in os.walk(lp(root)):
+            dirpath = unlp(dirpath)
             if cancelled():
                 return found
             dirnames[:] = [
@@ -99,10 +103,10 @@ def scan(
                 if exclude and any(e in full.lower() for e in exclude):
                     continue
                 try:
-                    st = os.stat(full)
+                    st = os.stat(lp(full))
                 except OSError:
                     continue
-                key = os.path.normcase(os.path.realpath(full))
+                key = os.path.normcase(unlp(os.path.realpath(lp(full))))
                 if key in seen or st.st_size < min_size:
                     continue
                 seen.add(key)

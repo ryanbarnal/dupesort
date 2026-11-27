@@ -1,5 +1,8 @@
 import os
+import sys
 from pathlib import Path
+
+import pytest
 
 from dupesort.core.duplicates import choose_keepers, merge_groups
 from dupesort.core.hashing import PARTIAL_BYTES, find_exact_duplicates
@@ -197,3 +200,43 @@ def test_capitals_only_rename_on_windows_style_paths(tmp_path, monkeypatch):
     out = session.move(src, tmp_path / "Dust In The Wind.mp3")
     assert out.name == "Dust In The Wind.mp3"
     assert sorted(p.name for p in tmp_path.iterdir() if p.suffix == ".mp3") == ["Dust In The Wind.mp3"]
+
+
+def test_long_windows_paths(monkeypatch):
+    """Windows can only use paths up to 259 characters unless they're written as \\\\?\\...;
+    moving into _Duplicates makes paths longer, so every move uses that form."""
+    from dupesort.core import longpath
+
+    monkeypatch.setattr(longpath.sys, "platform", "win32")
+    share = r"\\192.168.10.100\Documents\GS Files\Reports\مشروع الوارف\plan.dwg"
+    assert longpath.lp(share) == r"\\?\UNC\192.168.10.100\Documents\GS Files\Reports\مشروع الوارف\plan.dwg"
+    assert longpath.lp(r"C:\Music/Sub\..\song.mp3") == r"\\?\C:\Music\song.mp3"
+    assert longpath.lp(r"\\?\C:\already") == r"\\?\C:\already"
+    for p in (share, r"C:\Music\song.mp3"):
+        assert longpath.unlp(longpath.lp(p)) == p
+    monkeypatch.setattr(longpath.sys, "platform", "linux")
+    assert longpath.lp("/home/x/song.mp3") == "/home/x/song.mp3"
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows path length limit")
+def test_moving_into_duplicates_past_260_characters(tmp_path):
+    """Like the report: a file just under 260 characters, moved into _Duplicates, goes over."""
+    import os
+
+    from dupesort.core.history import Session
+    from dupesort.core.longpath import lp
+    from dupesort.core.scanner import scan
+
+    deep = tmp_path / "Project Reports"
+    while len(str(deep)) < 215:
+        deep = deep / "تقرير الفجوات الأمنية Handover"
+    os.makedirs(lp(deep), exist_ok=True)
+    src = deep / "CS-DK-003-37443570-Al Turath SRA.pdf"
+    with open(lp(src), "wb") as fh:
+        fh.write(b"%PDF-1.4 x")
+    [entry] = scan([tmp_path], "documents")  # found, even though the folders are deep
+    assert entry.path == src
+    session = Session("Moved duplicates")
+    dst = session.move_duplicate(entry)
+    assert len(str(dst)) > 260 and os.path.exists(lp(dst)) and not os.path.exists(lp(src))
+    assert session.undo() == [] and os.path.exists(lp(src))
